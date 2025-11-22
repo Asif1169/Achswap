@@ -11,7 +11,6 @@ export default {
         sm: ".1875rem", /* 3px */
       },
       colors: {
-        // Flat / base colors (regular buttons)
         background: "hsl(var(--background) / <alpha-value>)",
         foreground: "hsl(var(--foreground) / <alpha-value>)",
         border: "hsl(var(--border) / <alpha-value>)",
@@ -81,11 +80,14 @@ export default {
           busy: "rgb(239 68 68)",
           offline: "rgb(156 163 175)",
         },
+        success: "hsl(142 76% 36% / <alpha-value>)",
+        warning: "hsl(38 92% 50% / <alpha-value>)",
+        verified: "hsl(210 95% 48% / <alpha-value>)",
       },
       fontFamily: {
-        sans: ["var(--font-sans)"],
-        serif: ["var(--font-serif)"],
-        mono: ["var(--font-mono)"],
+        sans: ["Inter", "var(--font-sans)"],
+        serif: ["Georgia", "serif"],
+        mono: ["Menlo", "monospace"],
       },
       keyframes: {
         "accordion-down": {
@@ -100,6 +102,9 @@ export default {
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+      },
+      fontFeatureSettings: {
+        'tnum': '"tnum"',
       },
     },
   },

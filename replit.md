@@ -1,0 +1,133 @@
+# Achswap DEX
+
+## Overview
+Achswap is a modern decentralized exchange (DEX) built on the ARC Testnet. It provides a sleek, user-friendly interface for token swapping, liquidity provision, and token wrapping/unwrapping.
+
+## Network Configuration
+- **Chain**: ARC Testnet
+- **Chain ID**: 5042002
+- **RPC URL**: https://rpc.testnet.arc.network
+- **Native Token**: USDC (like ETH on Ethereum)
+
+## Key Features
+- **Wallet Integration**: RainbowKit-powered wallet connection supporting multiple wallets
+- **Token Swapping**: Intuitive swap interface with token selection and import functionality
+- **Liquidity Management**: Add and remove liquidity from token pairs
+- **Token Import System**: Search tokens by name/symbol or import by contract address with automatic on-chain data fetching
+- **Wrap/Unwrap**: Native USDC to wUSDC conversion (similar to ETH/WETH)
+- **Real-time Balances**: Automatic balance updates after transactions
+- **Verified Tokens**: Blue checkmark for whitelisted tokens (USDC, wUSDC, ACHS)
+
+## Token Addresses
+- **ACHS Token**: `0x5e4B41F57364177820458F26c96D732585573f89`
+- **wUSDC**: `0x1ddEaa3Ead136a70D6D52c99cFd9e336babcCaC1`
+- **USDC**: Native token (address: 0x0000000000000000000000000000000000000000)
+
+## Project Structure
+
+### Frontend (`client/src/`)
+- **Pages**:
+  - `Swap.tsx`: Token swapping interface
+  - `AddLiquidity.tsx`: Liquidity provision interface
+  - `RemoveLiquidity.tsx`: Liquidity withdrawal interface
+  
+- **Components**:
+  - `Header.tsx`: Navigation with wallet connection
+  - `TokenSelector.tsx`: Token selection modal with search and import
+  - `WrapUnwrapModal.tsx`: USDC/wUSDC conversion interface
+
+- **Libraries**:
+  - `wagmi.ts`: Wagmi and RainbowKit configuration for ARC Testnet
+  - `queryClient.ts`: React Query setup for data fetching
+
+### Backend (`server/`)
+- **Token List**: `server/data/tokens.json` - Default token list with verified tokens
+- **API Routes**: 
+  - `GET /api/tokens` - Returns the token list
+
+### Shared (`shared/`)
+- **Schema**: TypeScript types for tokens, imported tokens, and liquidity positions
+
+## Design System
+- **Theme**: Modern blue design matching Achswap branding
+- **Primary Color**: Blue (#2563eb) matching the logo
+- **Components**: Shadcn UI with custom styling
+- **Typography**: Inter font family
+- **Icons**: Lucide React
+
+## User Features
+
+### Token Import
+Users can import any ERC20 token by:
+1. Searching by name or symbol
+2. Pasting the contract address
+3. System automatically fetches token name, symbol, and decimals from the blockchain
+4. Imported tokens are saved to localStorage for persistence
+
+### Balance Display
+- Real-time balance fetching using Wagmi hooks
+- Automatic updates after transactions
+- Balances shown for all tokens in token selector
+- Balance display in swap and liquidity interfaces
+
+### Wrap/Unwrap System
+USDC (native token) can be wrapped to wUSDC (ERC20 token):
+- Similar to ETH/WETH on Ethereum
+- 1:1 conversion ratio
+- Dedicated modal for wrapping and unwrapping
+- Accessible from swap interface when selecting USDC/wUSDC pair
+
+## Development Notes
+- Token verification is managed in `tokens.json` - add `"verified": true` for blue checkmark
+- Imported tokens are stored in localStorage under `importedTokens` key
+- All blockchain interactions use ethers.js v6
+- Wallet state management via Wagmi React hooks
+- RainbowKit provides the wallet connection UI
+
+## Recent Changes
+- **Nov 22, 2024**: Initial DEX UI implementation with swap, liquidity, and token import features
+- Configured RainbowKit for ARC Testnet
+- Implemented token list with USDC, wUSDC, and ACHS
+- Built token selector with search and import functionality
+- Created wrap/unwrap interface for USDC/wUSDC
+
+## Implementation Status
+
+### ✅ Completed (UI Only)
+- Full wallet integration with RainbowKit
+- Token selection and import system
+- Balance fetching from blockchain
+- Responsive design across all pages
+- Token list with verification badges
+- Wrap/Unwrap UI for USDC/wUSDC
+- All navigation and routing
+
+### ⚠️ Required for Production
+**Before deploying, you must implement:**
+
+1. **WalletConnect Project ID**
+   - Get a free Project ID from https://cloud.walletconnect.com
+   - Set it as environment variable: `VITE_WALLETCONNECT_PROJECT_ID`
+   - Or update directly in `client/src/lib/wagmi.ts`
+
+2. **Smart Contract Integration**
+   - Swap contract calls (currently showing UI toasts only)
+   - Add/Remove liquidity contract interactions
+   - USDC/wUSDC wrapping contract (ERC20 deposit/withdraw)
+   - Balance refresh after transactions (invalidate queries)
+
+3. **DEX Smart Contracts**
+   - Deploy or integrate with existing DEX contracts
+   - Router contract for swaps
+   - Factory contract for liquidity pools
+   - Pair contracts for each token pair
+   - Wrapping contract for USDC/wUSDC
+
+## Future Enhancements
+- Price feeds and exchange rates
+- Liquidity pool analytics
+- Transaction history
+- Slippage tolerance settings
+- Multi-hop routing for optimal swap paths
+- Price impact calculations
+- Fee tier selection

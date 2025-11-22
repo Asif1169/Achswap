@@ -1,18 +1,37 @@
-import { sql } from "drizzle-orm";
-import { pgTable, text, varchar } from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-export const users = pgTable("users", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  username: text("username").notNull().unique(),
-  password: text("password").notNull(),
+// Token schema for the token list
+export const tokenSchema = z.object({
+  address: z.string(),
+  symbol: z.string(),
+  name: z.string(),
+  decimals: z.number(),
+  logoURI: z.string(),
+  verified: z.boolean().default(false),
 });
 
-export const insertUserSchema = createInsertSchema(users).pick({
-  username: true,
-  password: true,
+export type Token = z.infer<typeof tokenSchema>;
+
+// Imported token schema for localStorage
+export const importedTokenSchema = z.object({
+  address: z.string(),
+  symbol: z.string(),
+  name: z.string(),
+  decimals: z.number(),
+  timestamp: z.number(),
 });
 
-export type InsertUser = z.infer<typeof insertUserSchema>;
-export type User = typeof users.$inferSelect;
+export type ImportedToken = z.infer<typeof importedTokenSchema>;
+
+// Liquidity position schema
+export const liquidityPositionSchema = z.object({
+  id: z.string(),
+  tokenA: z.string(),
+  tokenB: z.string(),
+  amountA: z.string(),
+  amountB: z.string(),
+  lpTokens: z.string(),
+  shareOfPool: z.number(),
+});
+
+export type LiquidityPosition = z.infer<typeof liquidityPositionSchema>;
