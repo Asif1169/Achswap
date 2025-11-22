@@ -83,7 +83,7 @@ export default function Swap() {
       setIsLoadingQuote(true);
       try {
         const provider = new BrowserProvider(window.ethereum);
-        const ROUTER_ADDRESS = "0xFb5B0cc9a61E76C5B5c60b52dF092F30B36c547e";
+        const ROUTER_ADDRESS = "0x173A08F94C13a4A64a598361165e84Df871aEa9E";
         const ROUTER_ABI = [
           "function getAmountsOut(uint amountIn, address[] memory path) public view returns (uint[] memory amounts)"
         ];
