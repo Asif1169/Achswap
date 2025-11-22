@@ -10,7 +10,7 @@ export const defaultTokens: Token[] = [
     verified: true
   },
   {
-    address: "0xE484A40C1C7D56012cFa700Ec2E93e5cf0dd29AC",
+    address: "0x1ddEaa3Ead136a70D6D52c99cFd9e336babcCaC1",
     name: "Wrapped USDC",
     symbol: "wUSDC",
     decimals: 6,
