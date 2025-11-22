@@ -187,23 +187,13 @@ export default function RemoveLiquidity() {
 
       const factory = new Contract(FACTORY_ADDRESS, FACTORY_ABI, provider);
       
-      // Get wUSDC address for pool lookup
-      const wusdcAddress = tokens.find(t => t.symbol === 'wUSDC')?.address;
-      
-      if (!wusdcAddress) {
-        console.error('wUSDC token not found');
-        return;
-      }
+      // Use actual token addresses for pool lookup (pools use the ERC20 tokens directly)
+      const tokenAAddress = tokenA.address;
+      const tokenBAddress = tokenB.address;
 
-      // Convert native USDC to wUSDC for pool lookup
-      const tokenAAddress = tokenA.address === "0x0000000000000000000000000000000000000000" 
-        ? wusdcAddress 
-        : tokenA.address;
-      const tokenBAddress = tokenB.address === "0x0000000000000000000000000000000000000000" 
-        ? wusdcAddress 
-        : tokenB.address;
-
+      console.log('Looking up pair:', { tokenAAddress, tokenBAddress, factoryAddress: FACTORY_ADDRESS });
       const pair = await factory.getPair(tokenAAddress, tokenBAddress);
+      console.log('Pair found:', pair);
 
       if (pair === "0x0000000000000000000000000000000000000000") {
         setPairAddress(null);
@@ -279,16 +269,9 @@ export default function RemoveLiquidity() {
       const isTokenANative = tokenA.address === "0x0000000000000000000000000000000000000000";
       const isTokenBNative = tokenB.address === "0x0000000000000000000000000000000000000000";
 
-      // Get wUSDC address for router call
-      const wusdcAddress = tokens.find(t => t.symbol === 'wUSDC')?.address;
-      
-      if (!wusdcAddress) {
-        throw new Error("wUSDC token not found");
-      }
-
-      // Use wUSDC addresses for router calls since pools use wUSDC
-      const tokenAAddress = isTokenANative ? wusdcAddress : tokenA.address;
-      const tokenBAddress = isTokenBNative ? wusdcAddress : tokenB.address;
+      // Use actual token addresses (pools use ERC20 tokens directly)
+      const tokenAAddress = tokenA.address;
+      const tokenBAddress = tokenB.address;
 
       let tx;
 

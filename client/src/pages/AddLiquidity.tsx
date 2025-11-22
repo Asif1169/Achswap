@@ -36,7 +36,7 @@ export default function AddLiquidity() {
   const { address, isConnected } = useAccount();
   const { toast } = useToast();
 
-  const FACTORY_ADDRESS = "0x99e8437Fe6a63eC79C1c0a13fdE202e19E49a9d7";
+  const FACTORY_ADDRESS = "0x90195102F2388E8e30E78BC0b1D3A9748379a1F5";
   const ROUTER_ADDRESS = "0xFb5B0cc9a61E76C5B5c60b52dF092F30B36c547e";
   const ARCscan_EXPLORER_URL = "https://testnet.arcscan.app/tx/";
 
@@ -76,25 +76,9 @@ export default function AddLiquidity() {
         const provider = new BrowserProvider(window.ethereum);
         const factory = new Contract(FACTORY_ADDRESS, FACTORY_ABI, provider);
 
-        // Get wUSDC address
-        const wusdcToken = tokens.find(t => t.symbol === 'wUSDC');
-        const wusdcAddress = wusdcToken?.address;
-
-        if (!wusdcAddress) {
-          console.warn('wUSDC token not found in token list');
-          setPairExists(false);
-          setReserveA(0n);
-          setReserveB(0n);
-          return;
-        }
-
-        // Convert native USDC to wUSDC for pool lookup
-        const tokenAAddress = tokenA.address === "0x0000000000000000000000000000000000000000"
-          ? wusdcAddress
-          : tokenA.address;
-        const tokenBAddress = tokenB.address === "0x0000000000000000000000000000000000000000"
-          ? wusdcAddress
-          : tokenB.address;
+        // Use actual token addresses for pool lookup (pools use the ERC20 tokens directly)
+        const tokenAAddress = tokenA.address;
+        const tokenBAddress = tokenB.address;
 
         console.log('Checking pair:', { tokenAAddress, tokenBAddress, factoryAddress: FACTORY_ADDRESS });
 
@@ -333,22 +317,23 @@ export default function AddLiquidity() {
       // Deadline: 20 minutes from now
       const deadline = Math.floor(Date.now() / 1000) + 60 * 20;
 
+      console.log('Adding liquidity:', {
+        tokenA: tokenA.symbol,
+        tokenB: tokenB.symbol,
+        amountADesired: amountADesired.toString(),
+        amountBDesired: amountBDesired.toString(),
+        amountAMin: amountAMin.toString(),
+        amountBMin: amountBMin.toString(),
+      });
+
       toast({
         title: "Adding liquidity",
         description: `Adding ${amountA} ${tokenA.symbol} and ${amountB} ${tokenB.symbol}`,
       });
 
-      // Get wUSDC address
-      const wusdcToken = tokens.find(t => t.symbol === 'wUSDC');
-      const wusdcAddress = wusdcToken?.address;
-
-      if (!wusdcAddress) {
-        throw new Error("wUSDC token not found");
-      }
-
-      // Convert native USDC to wUSDC for pool operations
-      const tokenAAddress = isTokenANative ? wusdcAddress : tokenA.address;
-      const tokenBAddress = isTokenBNative ? wusdcAddress : tokenB.address;
+      // Use actual token addresses (pools are created with ERC20 tokens directly)
+      const tokenAAddress = tokenA.address;
+      const tokenBAddress = tokenB.address;
 
       let tx;
 
@@ -362,34 +347,32 @@ export default function AddLiquidity() {
         const ethAmountMin = isTokenANative ? amountAMin : amountBMin;
 
         // Approve token (if not native)
-        if (tokenAddress !== wusdcAddress) {
-          const tokenContract = new Contract(token.address, ERC20_ABI, signer);
-          const allowance = await tokenContract.allowance(address, ROUTER_ADDRESS);
+        const tokenContract = new Contract(token.address, ERC20_ABI, signer);
+        const allowance = await tokenContract.allowance(address, ROUTER_ADDRESS);
 
-          if (allowance < tokenAmount) {
-            const approveTx = await tokenContract.approve(ROUTER_ADDRESS, tokenAmount);
-            const approveReceipt = await approveTx.wait();
+        if (allowance < tokenAmount) {
+          const approveTx = await tokenContract.approve(ROUTER_ADDRESS, tokenAmount);
+          const approveReceipt = await approveTx.wait();
 
-            // Refetch balances after approval
-            await Promise.all([refetchBalanceA(), refetchBalanceB()]);
+          // Refetch balances after approval
+          await Promise.all([refetchBalanceA(), refetchBalanceB()]);
 
-            toast({
-              title: "Approval successful",
-              description: (
-                <div className="flex items-center gap-2">
-                  <span>Token approval confirmed</span>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-6 px-2"
-                    onClick={() => openExplorer(approveReceipt.hash)}
-                  >
-                    <ExternalLink className="h-3 w-3" />
-                  </Button>
-                </div>
-              ),
-            });
-          }
+          toast({
+            title: "Approval successful",
+            description: (
+              <div className="flex items-center gap-2">
+                <span>Token approval confirmed</span>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-6 px-2"
+                  onClick={() => openExplorer(approveReceipt.hash)}
+                >
+                  <ExternalLink className="h-3 w-3" />
+                </Button>
+              </div>
+            ),
+          });
         }
 
         tx = await router.addLiquidityETH(
