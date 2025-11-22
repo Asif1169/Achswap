@@ -9,6 +9,7 @@ import { useAccount, useBalance } from "wagmi";
 import { useToast } from "@/hooks/use-toast";
 import type { Token } from "@shared/schema";
 import { Contract, BrowserProvider, formatUnits, parseUnits } from "ethers";
+import { defaultTokens } from "@/data/tokens";
 
 // ERC20 ABI for token operations
 const ERC20_ABI = [
@@ -146,9 +147,6 @@ export default function Swap() {
 
   const loadTokens = async () => {
     try {
-      const response = await fetch('/api/tokens');
-      const defaultTokens = await response.json();
-
       // Load imported tokens from localStorage
       const imported = localStorage.getItem('importedTokens');
       const importedTokens = imported ? JSON.parse(imported) : [];

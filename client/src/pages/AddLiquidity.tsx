@@ -8,6 +8,7 @@ import { useAccount, useBalance } from "wagmi";
 import { useToast } from "@/hooks/use-toast";
 import type { Token } from "@shared/schema";
 import { Contract, BrowserProvider, formatUnits, parseUnits } from "ethers";
+import { defaultTokens } from "@/data/tokens";
 
 const ERC20_ABI = [
   "function name() view returns (string)",
@@ -36,9 +37,6 @@ export default function AddLiquidity() {
 
   const loadTokens = async () => {
     try {
-      const response = await fetch('/api/tokens');
-      const defaultTokens = await response.json();
-      
       const imported = localStorage.getItem('importedTokens');
       const importedTokens = imported ? JSON.parse(imported) : [];
       
