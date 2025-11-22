@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import type { Token } from "@shared/schema";
 import { Contract, BrowserProvider, formatUnits, parseUnits } from "ethers";
 import { defaultTokens } from "@/data/tokens";
+import { formatAmount, parseAmount, calculateRatio } from "@/lib/decimal-utils";
 
 const ERC20_ABI = [
   "function name() view returns (string)",
@@ -135,10 +136,10 @@ export default function AddLiquidity() {
     }
 
     try {
-      const amountABigInt = parseUnits(amountA, tokenA.decimals);
+      const amountABigInt = parseAmount(amountA, tokenA.decimals);
       const amountBBigInt = (amountABigInt * reserveB) / reserveA;
-      const calculatedAmountB = formatUnits(amountBBigInt, tokenB.decimals);
-      setAmountB(parseFloat(calculatedAmountB).toFixed(6));
+      const calculatedAmountB = formatAmount(amountBBigInt, tokenB.decimals);
+      setAmountB(calculatedAmountB);
     } catch (error) {
       console.error('Failed to calculate amount B:', error);
     }
@@ -254,28 +255,12 @@ export default function AddLiquidity() {
   let balanceAFormatted = "0.00";
   let balanceBFormatted = "0.00";
   
-  try {
-    if (balanceA) {
-      const formatted = formatUnits(balanceA.value, balanceA.decimals);
-      const num = parseFloat(formatted);
-      if (!isNaN(num) && isFinite(num)) {
-        balanceAFormatted = num.toFixed(6);
-      }
-    }
-  } catch (error) {
-    console.error('Error formatting balanceA', error);
+  if (balanceA) {
+    balanceAFormatted = formatAmount(balanceA.value, balanceA.decimals);
   }
   
-  try {
-    if (balanceB) {
-      const formatted = formatUnits(balanceB.value, balanceB.decimals);
-      const num = parseFloat(formatted);
-      if (!isNaN(num) && isFinite(num)) {
-        balanceBFormatted = num.toFixed(6);
-      }
-    }
-  } catch (error) {
-    console.error('Error formatting balanceB', error);
+  if (balanceB) {
+    balanceBFormatted = formatAmount(balanceB.value, balanceB.decimals);
   }
 
   const handleAddLiquidity = async () => {
@@ -591,7 +576,7 @@ export default function AddLiquidity() {
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Current Price</span>
                   <span className="font-medium">
-                    1 {tokenA.symbol} = {(Number(formatUnits(reserveB, tokenB.decimals)) / Number(formatUnits(reserveA, tokenA.decimals))).toFixed(6)} {tokenB.symbol}
+                    1 {tokenA.symbol} = {calculateRatio(reserveB, tokenB.decimals, reserveA, tokenA.decimals)} {tokenB.symbol}
                   </span>
                 </div>
               )}

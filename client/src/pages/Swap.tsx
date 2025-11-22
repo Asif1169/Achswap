@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import type { Token } from "@shared/schema";
 import { Contract, BrowserProvider, formatUnits, parseUnits } from "ethers";
 import { defaultTokens } from "@/data/tokens";
+import { formatAmount, parseAmount } from "@/lib/decimal-utils";
 
 // ERC20 ABI for token operations
 const ERC20_ABI = [
@@ -88,7 +89,7 @@ export default function Swap() {
         ];
 
         const router = new Contract(ROUTER_ADDRESS, ROUTER_ABI, provider);
-        const amountIn = parseUnits(fromAmount, fromToken.decimals);
+        const amountIn = parseAmount(fromAmount, fromToken.decimals);
 
         // Build path - use wUSDC for liquidity pool routing
         let path: string[] = [];
@@ -135,8 +136,8 @@ export default function Swap() {
           }
         }
 
-        const outputAmount = formatUnits(amounts[amounts.length - 1], toToken.decimals);
-        setToAmount(parseFloat(outputAmount).toFixed(6));
+        const outputAmount = formatAmount(amounts[amounts.length - 1], toToken.decimals);
+        setToAmount(outputAmount);
 
         // Calculate price impact
         // For tokens with same decimals, compare at same precision
@@ -281,7 +282,7 @@ export default function Swap() {
       const provider = new BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
 
-      const amountBigInt = parseUnits(amount, wusdcToken.decimals);
+      const amountBigInt = parseAmount(amount, wusdcToken.decimals);
 
       // For native USDC, we send it to wUSDC contract's deposit function
       // The wUSDC contract receives native tokens and mints wrapped tokens
@@ -338,7 +339,7 @@ export default function Swap() {
       const provider = new BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
 
-      const amountBigInt = parseUnits(amount, wusdcToken.decimals);
+      const amountBigInt = parseAmount(amount, wusdcToken.decimals);
       const wusdcContract = new Contract(wusdcToken.address, WUSDC_ABI, signer);
 
       toast({
@@ -429,7 +430,7 @@ export default function Swap() {
       ];
 
       const router = new Contract(ROUTER_ADDRESS, ROUTER_ABI, signer);
-      const amountIn = parseUnits(fromAmount, fromToken.decimals);
+      const amountIn = parseAmount(fromAmount, fromToken.decimals);
 
       // Build path - use wUSDC for liquidity pool routing
       let path: string[] = [];

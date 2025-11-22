@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import type { Token } from "@shared/schema";
 import { Contract, BrowserProvider, formatUnits, parseUnits } from "ethers";
 import { defaultTokens } from "@/data/tokens";
+import { formatAmount, parseAmount } from "@/lib/decimal-utils";
 
 const ERC20_ABI = [
   "function name() view returns (string)",
@@ -70,7 +71,7 @@ export default function RemoveLiquidity() {
         const totalSupply = await pairContract.totalSupply();
         const token0Address = await pairContract.token0();
 
-        const liquidityToRemove = parseUnits(lpBalance, 18) * BigInt(percentage[0]) / 100n;
+        const liquidityToRemove = parseAmount(lpBalance, 18) * BigInt(percentage[0]) / 100n;
 
         const amount0 = liquidityToRemove * reserve0 / totalSupply;
         const amount1 = liquidityToRemove * reserve1 / totalSupply;
@@ -79,11 +80,11 @@ export default function RemoveLiquidity() {
         const isTokenAToken0 = tokenA.address.toLowerCase() === token0Address.toLowerCase();
 
         if (isTokenAToken0) {
-          setAmountAToReceive(formatUnits(amount0, tokenA.decimals));
-          setAmountBToReceive(formatUnits(amount1, tokenB.decimals));
+          setAmountAToReceive(formatAmount(amount0, tokenA.decimals));
+          setAmountBToReceive(formatAmount(amount1, tokenB.decimals));
         } else {
-          setAmountAToReceive(formatUnits(amount1, tokenA.decimals));
-          setAmountBToReceive(formatUnits(amount0, tokenB.decimals));
+          setAmountAToReceive(formatAmount(amount1, tokenA.decimals));
+          setAmountBToReceive(formatAmount(amount0, tokenB.decimals));
         }
       } catch (error) {
         console.error('Failed to calculate amounts:', error);
@@ -220,7 +221,7 @@ export default function RemoveLiquidity() {
       // Get LP token balance (LP tokens always use 18 decimals)
       const pairContract = new Contract(pair, ERC20_ABI, provider);
       const balance = await pairContract.balanceOf(address);
-      setLpBalance(formatUnits(balance, 18));
+      setLpBalance(formatAmount(balance, 18));
     } catch (error) {
       console.error('Failed to fetch pair info:', error);
       toast({
