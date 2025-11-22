@@ -65,7 +65,7 @@ export default function Swap() {
       // Handle wrap/unwrap - 1:1 ratio
       const isWrap = fromToken.symbol === 'USDC' && toToken.symbol === 'wUSDC';
       const isUnwrap = fromToken.symbol === 'wUSDC' && toToken.symbol === 'USDC';
-      
+
       if (isWrap || isUnwrap) {
         setToAmount(fromAmount);
         setPriceImpact(0);
@@ -84,41 +84,33 @@ export default function Swap() {
 
         const router = new Contract(ROUTER_ADDRESS, ROUTER_ABI, provider);
         const amountIn = parseUnits(fromAmount, fromToken.decimals);
-        
+
         // Build path - use wUSDC for liquidity pool routing
         let path: string[] = [];
         const isFromNative = fromToken.address === "0x0000000000000000000000000000000000000000";
         const isToNative = toToken.address === "0x0000000000000000000000000000000000000000";
-        
+
         // Get wUSDC address for routing
         const wusdcAddress = tokens.find(t => t.symbol === 'wUSDC')?.address;
-        
+
         if (!wusdcAddress) {
           throw new Error("wUSDC token not found");
         }
 
-        // For native USDC swaps, use wUSDC in the path since pools use wUSDC
-        if (isFromNative && !isToNative) {
-          if (toToken.address === wusdcAddress) {
-            path = [wusdcAddress, wusdcAddress];
-          } else {
-            path = [wusdcAddress, toToken.address];
-          }
-        } else if (!isFromNative && isToNative) {
-          if (fromToken.address === wusdcAddress) {
-            path = [wusdcAddress, wusdcAddress];
-          } else {
-            path = [fromToken.address, wusdcAddress];
-          }
-        } else if (isFromNative && isToNative) {
-          path = [wusdcAddress, wusdcAddress];
+        // Convert native USDC addresses to wUSDC for pool routing
+        const fromTokenAddress = isFromNative ? wusdcAddress : fromToken.address;
+        const toTokenAddress = isToNative ? wusdcAddress : toToken.address;
+
+        // Build path based on converted addresses
+        if (fromTokenAddress === toTokenAddress) {
+          // Same token (shouldn't happen in UI, but handle it)
+          path = [fromTokenAddress, toTokenAddress];
+        } else if (fromTokenAddress === wusdcAddress || toTokenAddress === wusdcAddress) {
+          // Direct path if one token is wUSDC
+          path = [fromTokenAddress, toTokenAddress];
         } else {
-          // Both are ERC20 tokens
-          if (fromToken.address === wusdcAddress || toToken.address === wusdcAddress) {
-            path = [fromToken.address, toToken.address];
-          } else {
-            path = [fromToken.address, wusdcAddress, toToken.address];
-          }
+          // Multi-hop through wUSDC
+          path = [fromTokenAddress, wusdcAddress, toTokenAddress];
         }
 
         let amounts;
@@ -137,7 +129,7 @@ export default function Swap() {
             throw error;
           }
         }
-        
+
         const outputAmount = formatUnits(amounts[amounts.length - 1], toToken.decimals);
         setToAmount(parseFloat(outputAmount).toFixed(6));
 
@@ -400,42 +392,28 @@ export default function Swap() {
       let path: string[] = [];
       const isFromNative = fromToken.address === "0x0000000000000000000000000000000000000000";
       const isToNative = toToken.address === "0x0000000000000000000000000000000000000000";
-      
+
       // Get wUSDC address for routing
       const wusdcAddress = wusdcToken?.address;
-      
+
       if (!wusdcAddress) {
         throw new Error("wUSDC token not found");
       }
 
-      // For native USDC swaps, use wUSDC in the path since pools use wUSDC
-      if (isFromNative && !isToNative) {
-        // Swapping native USDC to token: USDC -> wUSDC -> token
-        if (toToken.address === wusdcAddress) {
-          // Direct USDC to wUSDC (this is handled by wrap function)
-          path = [wusdcAddress, wusdcAddress];
-        } else {
-          path = [wusdcAddress, toToken.address];
-        }
-      } else if (!isFromNative && isToNative) {
-        // Swapping token to native USDC: token -> wUSDC -> USDC
-        if (fromToken.address === wusdcAddress) {
-          path = [wusdcAddress, wusdcAddress];
-        } else {
-          path = [fromToken.address, wusdcAddress];
-        }
-      } else if (isFromNative && isToNative) {
-        // Both native (shouldn't happen, but handle it)
-        path = [wusdcAddress, wusdcAddress];
+      // Convert native USDC addresses to wUSDC for pool routing
+      const fromTokenAddress = isFromNative ? wusdcAddress : fromToken.address;
+      const toTokenAddress = isToNative ? wusdcAddress : toToken.address;
+
+      // Build path based on converted addresses
+      if (fromTokenAddress === toTokenAddress) {
+        // Same token (shouldn't happen in UI, but handle it)
+        path = [fromTokenAddress, toTokenAddress];
+      } else if (fromTokenAddress === wusdcAddress || toTokenAddress === wusdcAddress) {
+        // Direct path if one token is wUSDC
+        path = [fromTokenAddress, toTokenAddress];
       } else {
-        // Both are ERC20 tokens
-        if (fromToken.address === wusdcAddress || toToken.address === wusdcAddress) {
-          // Direct path if one is wUSDC
-          path = [fromToken.address, toToken.address];
-        } else {
-          // Use wUSDC as intermediate
-          path = [fromToken.address, wusdcAddress, toToken.address];
-        }
+        // Multi-hop through wUSDC
+        path = [fromTokenAddress, wusdcAddress, toTokenAddress];
       }
 
       // Get expected output
@@ -455,12 +433,12 @@ export default function Swap() {
           throw new Error("No liquidity pool exists for this token pair. Try using wUSDC instead of USDC.");
         }
       }
-      
+
       const amountOutMin = amounts[amounts.length - 1] * BigInt(Math.floor((100 - slippage) * 100)) / 10000n;
 
       // Deadline from settings
       const deadlineTimestamp = Math.floor(Date.now() / 1000) + 60 * deadline;
-      
+
       // Use recipient address if provided, otherwise use connected wallet
       const recipient = recipientAddress && recipientAddress.startsWith('0x') && recipientAddress.length === 42 
         ? recipientAddress 

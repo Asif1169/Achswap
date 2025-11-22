@@ -27,6 +27,10 @@ export default function AddLiquidity() {
   const [showTokenBSelector, setShowTokenBSelector] = useState(false);
   const [tokens, setTokens] = useState<Token[]>([]);
   const [isAdding, setIsAdding] = useState(false);
+  const [pairExists, setPairExists] = useState(false);
+  const [reserveA, setReserveA] = useState<bigint>(0n);
+  const [reserveB, setReserveB] = useState<bigint>(0n);
+  const [isLoadingPair, setIsLoadingPair] = useState(false);
   
   const { address, isConnected } = useAccount();
   const { toast } = useToast();
@@ -34,6 +38,100 @@ export default function AddLiquidity() {
   useEffect(() => {
     loadTokens();
   }, []);
+
+  // Check if pair exists and fetch reserves
+  useEffect(() => {
+    const checkPairExists = async () => {
+      if (!tokenA || !tokenB || !window.ethereum) {
+        setPairExists(false);
+        setReserveA(0n);
+        setReserveB(0n);
+        return;
+      }
+
+      setIsLoadingPair(true);
+      try {
+        const provider = new BrowserProvider(window.ethereum);
+        const FACTORY_ADDRESS = "0x99e8437Fe6a63eC79C1c0a13fdE202e19E49a9d7";
+        const FACTORY_ABI = [
+          "function getPair(address tokenA, address tokenB) external view returns (address pair)"
+        ];
+        const PAIR_ABI = [
+          "function getReserves() external view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast)",
+          "function token0() external view returns (address)",
+          "function token1() external view returns (address)"
+        ];
+
+        const factory = new Contract(FACTORY_ADDRESS, FACTORY_ABI, provider);
+        
+        // Get wUSDC address
+        const wusdcToken = tokens.find(t => t.symbol === 'wUSDC');
+        const wusdcAddress = wusdcToken?.address;
+
+        if (!wusdcAddress) {
+          setPairExists(false);
+          return;
+        }
+
+        // Convert native USDC to wUSDC for pool lookup
+        const tokenAAddress = tokenA.address === "0x0000000000000000000000000000000000000000" 
+          ? wusdcAddress 
+          : tokenA.address;
+        const tokenBAddress = tokenB.address === "0x0000000000000000000000000000000000000000" 
+          ? wusdcAddress 
+          : tokenB.address;
+
+        const pairAddress = await factory.getPair(tokenAAddress, tokenBAddress);
+
+        if (pairAddress === "0x0000000000000000000000000000000000000000") {
+          setPairExists(false);
+          setReserveA(0n);
+          setReserveB(0n);
+        } else {
+          setPairExists(true);
+          
+          // Fetch reserves
+          const pairContract = new Contract(pairAddress, PAIR_ABI, provider);
+          const [reserve0, reserve1] = await pairContract.getReserves();
+          const token0Address = await pairContract.token0();
+
+          // Determine which reserve corresponds to which token
+          if (tokenAAddress.toLowerCase() === token0Address.toLowerCase()) {
+            setReserveA(reserve0);
+            setReserveB(reserve1);
+          } else {
+            setReserveA(reserve1);
+            setReserveB(reserve0);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to check pair:', error);
+        setPairExists(false);
+        setReserveA(0n);
+        setReserveB(0n);
+      } finally {
+        setIsLoadingPair(false);
+      }
+    };
+
+    checkPairExists();
+  }, [tokenA, tokenB, tokens]);
+
+  // Auto-calculate amountB based on pool ratio when amountA changes
+  useEffect(() => {
+    if (!pairExists || !tokenA || !tokenB || !amountA || parseFloat(amountA) <= 0 || reserveA === 0n || reserveB === 0n) {
+      return;
+    }
+
+    try {
+      const amountABigInt = parseUnits(amountA, tokenA.decimals);
+      const amountBBigInt = (amountABigInt * reserveB) / reserveA;
+      const calculatedAmountB = formatUnits(amountBBigInt, tokenB.decimals);
+      setAmountB(parseFloat(calculatedAmountB).toFixed(6));
+    } catch (error) {
+      console.error('Failed to calculate amount B:', error);
+    }
+  }, [amountA, pairExists, tokenA, tokenB, reserveA, reserveB]);
 
   const loadTokens = async () => {
     try {
@@ -183,27 +281,42 @@ export default function AddLiquidity() {
       const isTokenANative = tokenA.address === "0x0000000000000000000000000000000000000000";
       const isTokenBNative = tokenB.address === "0x0000000000000000000000000000000000000000";
 
+      // Get wUSDC address
+      const wusdcToken = tokens.find(t => t.symbol === 'wUSDC');
+      const wusdcAddress = wusdcToken?.address;
+
+      if (!wusdcAddress) {
+        throw new Error("wUSDC token not found");
+      }
+
+      // Convert native USDC to wUSDC for pool operations
+      const tokenAAddress = isTokenANative ? wusdcAddress : tokenA.address;
+      const tokenBAddress = isTokenBNative ? wusdcAddress : tokenB.address;
+
       let tx;
 
       if (isTokenANative || isTokenBNative) {
         // Add liquidity with native USDC (acts as ETH)
         const token = isTokenANative ? tokenB : tokenA;
+        const tokenAddress = isTokenANative ? tokenBAddress : tokenAAddress;
         const tokenAmount = isTokenANative ? amountBDesired : amountADesired;
         const tokenAmountMin = isTokenANative ? amountBMin : amountAMin;
         const ethAmount = isTokenANative ? amountADesired : amountBDesired;
         const ethAmountMin = isTokenANative ? amountAMin : amountBMin;
 
-        // Approve token
-        const tokenContract = new Contract(token.address, ERC20_ABI, signer);
-        const allowance = await tokenContract.allowance(address, ROUTER_ADDRESS);
-        
-        if (allowance < tokenAmount) {
-          const approveTx = await tokenContract.approve(ROUTER_ADDRESS, tokenAmount);
-          await approveTx.wait();
+        // Approve token (if not native)
+        if (tokenAddress !== wusdcAddress) {
+          const tokenContract = new Contract(token.address, ERC20_ABI, signer);
+          const allowance = await tokenContract.allowance(address, ROUTER_ADDRESS);
+          
+          if (allowance < tokenAmount) {
+            const approveTx = await tokenContract.approve(ROUTER_ADDRESS, tokenAmount);
+            await approveTx.wait();
+          }
         }
 
         tx = await router.addLiquidityETH(
-          token.address,
+          tokenAddress,
           tokenAmount,
           tokenAmountMin,
           ethAmountMin,
@@ -214,8 +327,8 @@ export default function AddLiquidity() {
       } else {
         // Add liquidity with two ERC20 tokens
         // Approve both tokens
-        const tokenAContract = new Contract(tokenA.address, ERC20_ABI, signer);
-        const tokenBContract = new Contract(tokenB.address, ERC20_ABI, signer);
+        const tokenAContract = new Contract(tokenAAddress, ERC20_ABI, signer);
+        const tokenBContract = new Contract(tokenBAddress, ERC20_ABI, signer);
         
         const allowanceA = await tokenAContract.allowance(address, ROUTER_ADDRESS);
         const allowanceB = await tokenBContract.allowance(address, ROUTER_ADDRESS);
@@ -231,8 +344,8 @@ export default function AddLiquidity() {
         }
 
         tx = await router.addLiquidity(
-          tokenA.address,
-          tokenB.address,
+          tokenAAddress,
+          tokenBAddress,
           amountADesired,
           amountBDesired,
           amountAMin,
@@ -336,10 +449,11 @@ export default function AddLiquidity() {
               <Input
                 data-testid="input-token-b-amount"
                 type="number"
-                placeholder="0.00"
+                placeholder={pairExists ? "Calculated from pool ratio" : "0.00"}
                 value={amountB}
-                onChange={(e) => setAmountB(e.target.value)}
-                className="border-0 bg-transparent text-xl md:text-2xl font-semibold h-auto p-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+                onChange={(e) => !pairExists && setAmountB(e.target.value)}
+                disabled={pairExists}
+                className="border-0 bg-transparent text-xl md:text-2xl font-semibold h-auto p-0 focus-visible:ring-0 focus-visible:ring-offset-0 disabled:opacity-100 disabled:cursor-not-allowed"
               />
               
               <Button
@@ -367,13 +481,29 @@ export default function AddLiquidity() {
           {tokenA && tokenB && (
             <div className="bg-muted/50 rounded-xl p-4 space-y-2 border border-border/40">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Pool share</span>
-                <span className="font-medium">0%</span>
+                <span className="text-muted-foreground">Pool Status</span>
+                <span className="font-medium">
+                  {isLoadingPair ? "Checking..." : pairExists ? "Pool Exists" : "New Pool"}
+                </span>
               </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Price</span>
-                <span className="font-medium">1 {tokenA.symbol} = 1 {tokenB.symbol}</span>
-              </div>
+              {pairExists && reserveA > 0n && reserveB > 0n && (
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Current Price</span>
+                  <span className="font-medium">
+                    1 {tokenA.symbol} = {(Number(formatUnits(reserveB, tokenB.decimals)) / Number(formatUnits(reserveA, tokenA.decimals))).toFixed(6)} {tokenB.symbol}
+                  </span>
+                </div>
+              )}
+              {!pairExists && (
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Initial Price</span>
+                  <span className="font-medium">
+                    {amountA && amountB && parseFloat(amountA) > 0 && parseFloat(amountB) > 0
+                      ? `1 ${tokenA.symbol} = ${(parseFloat(amountB) / parseFloat(amountA)).toFixed(6)} ${tokenB.symbol}`
+                      : "Set by initial deposit"}
+                  </span>
+                </div>
+              )}
             </div>
           )}
 
