@@ -77,10 +77,37 @@ export default function Swap() {
 
         const router = new Contract(ROUTER_ADDRESS, ROUTER_ABI, provider);
         const amountIn = parseUnits(fromAmount, fromToken.decimals);
-        const path = [fromToken.address, toToken.address];
+        
+        // Build path - use wUSDC as intermediate if needed
+        let path: string[] = [];
+        const isFromNative = fromToken.address === "0x0000000000000000000000000000000000000000";
+        const isToNative = toToken.address === "0x0000000000000000000000000000000000000000";
+        
+        // Get wUSDC address for routing
+        const wusdcAddress = tokens.find(t => t.symbol === 'wUSDC')?.address;
+        
+        if (isFromNative || isToNative) {
+          path = [fromToken.address, toToken.address];
+        } else if (wusdcAddress && fromToken.address !== wusdcAddress && toToken.address !== wusdcAddress) {
+          path = [fromToken.address, wusdcAddress, toToken.address];
+        } else {
+          path = [fromToken.address, toToken.address];
+        }
 
-        const amounts = await router.getAmountsOut(amountIn, path);
-        const outputAmount = formatUnits(amounts[1], toToken.decimals);
+        let amounts;
+        try {
+          amounts = await router.getAmountsOut(amountIn, path);
+        } catch (error) {
+          // If multi-hop fails, try direct path
+          if (path.length > 2) {
+            path = [fromToken.address, toToken.address];
+            amounts = await router.getAmountsOut(amountIn, path);
+          } else {
+            throw error;
+          }
+        }
+        
+        const outputAmount = formatUnits(amounts[amounts.length - 1], toToken.decimals);
         setToAmount(parseFloat(outputAmount).toFixed(6));
       } catch (error) {
         console.error('Failed to fetch quote:', error);
@@ -324,12 +351,40 @@ export default function Swap() {
       const router = new Contract(ROUTER_ADDRESS, ROUTER_ABI, signer);
       const amountIn = parseUnits(fromAmount, fromToken.decimals);
 
-      // Build path
-      const path = [fromToken.address, toToken.address];
+      // Build path - use wUSDC as intermediate if tokens don't have direct pair
+      let path: string[] = [];
+      const isFromNative = fromToken.address === "0x0000000000000000000000000000000000000000";
+      const isToNative = toToken.address === "0x0000000000000000000000000000000000000000";
+      
+      // Get wUSDC address for routing
+      const wusdcAddress = wusdcToken?.address;
+      
+      if (isFromNative || isToNative) {
+        // Direct path for native swaps
+        path = [fromToken.address, toToken.address];
+      } else if (wusdcAddress && fromToken.address !== wusdcAddress && toToken.address !== wusdcAddress) {
+        // Use wUSDC as intermediate token for better routing
+        path = [fromToken.address, wusdcAddress, toToken.address];
+      } else {
+        // Direct path
+        path = [fromToken.address, toToken.address];
+      }
 
       // Get expected output
-      const amounts = await router.getAmountsOut(amountIn, path);
-      const amountOutMin = amounts[1] * 95n / 100n; // 5% slippage tolerance
+      let amounts;
+      try {
+        amounts = await router.getAmountsOut(amountIn, path);
+      } catch (error) {
+        // If multi-hop fails, try direct path
+        if (path.length > 2) {
+          path = [fromToken.address, toToken.address];
+          amounts = await router.getAmountsOut(amountIn, path);
+        } else {
+          throw new Error("No liquidity pool exists for this token pair");
+        }
+      }
+      
+      const amountOutMin = amounts[amounts.length - 1] * 95n / 100n; // 5% slippage tolerance
 
       // Deadline: 20 minutes from now
       const deadline = Math.floor(Date.now() / 1000) + 60 * 20;
