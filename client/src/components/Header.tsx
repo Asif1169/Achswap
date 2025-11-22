@@ -36,7 +36,7 @@ export function Header() {
           </div>
 
           <div data-testid="connect-wallet-button">
-            <ConnectButton 
+            <ConnectButton
               showBalance={false}
               chainStatus="icon"
             />
