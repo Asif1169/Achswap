@@ -187,11 +187,33 @@ export default function RemoveLiquidity() {
       ];
 
       const factory = new Contract(FACTORY_ADDRESS, FACTORY_ABI, provider);
-      const pair = await factory.getPair(tokenA.address, tokenB.address);
+      
+      // Get wUSDC address for pool lookup
+      const wusdcAddress = tokens.find(t => t.symbol === 'wUSDC')?.address;
+      
+      if (!wusdcAddress) {
+        console.error('wUSDC token not found');
+        return;
+      }
+
+      // Convert native USDC to wUSDC for pool lookup
+      const tokenAAddress = tokenA.address === "0x0000000000000000000000000000000000000000" 
+        ? wusdcAddress 
+        : tokenA.address;
+      const tokenBAddress = tokenB.address === "0x0000000000000000000000000000000000000000" 
+        ? wusdcAddress 
+        : tokenB.address;
+
+      const pair = await factory.getPair(tokenAAddress, tokenBAddress);
 
       if (pair === "0x0000000000000000000000000000000000000000") {
         setPairAddress(null);
         setLpBalance("0");
+        toast({
+          title: "Pool not found",
+          description: "No liquidity pool exists for this token pair. Pools use wUSDC instead of native USDC.",
+          variant: "destructive",
+        });
         return;
       }
 
@@ -203,6 +225,11 @@ export default function RemoveLiquidity() {
       setLpBalance(formatUnits(balance, 18));
     } catch (error) {
       console.error('Failed to fetch pair info:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch pool information",
+        variant: "destructive",
+      });
     }
   };
 
@@ -253,12 +280,23 @@ export default function RemoveLiquidity() {
       const isTokenANative = tokenA.address === "0x0000000000000000000000000000000000000000";
       const isTokenBNative = tokenB.address === "0x0000000000000000000000000000000000000000";
 
+      // Get wUSDC address for router call
+      const wusdcAddress = tokens.find(t => t.symbol === 'wUSDC')?.address;
+      
+      if (!wusdcAddress) {
+        throw new Error("wUSDC token not found");
+      }
+
+      // Use wUSDC addresses for router calls since pools use wUSDC
+      const tokenAAddress = isTokenANative ? wusdcAddress : tokenA.address;
+      const tokenBAddress = isTokenBNative ? wusdcAddress : tokenB.address;
+
       let tx;
 
       if (isTokenANative || isTokenBNative) {
-        const token = isTokenANative ? tokenB : tokenA;
+        const token = isTokenANative ? tokenBAddress : tokenAAddress;
         tx = await router.removeLiquidityETH(
-          token.address,
+          token,
           liquidityToRemove,
           amountAMin,
           amountBMin,
@@ -267,8 +305,8 @@ export default function RemoveLiquidity() {
         );
       } else {
         tx = await router.removeLiquidity(
-          tokenA.address,
-          tokenB.address,
+          tokenAAddress,
+          tokenBAddress,
           liquidityToRemove,
           amountAMin,
           amountBMin,
