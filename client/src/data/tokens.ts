@@ -5,7 +5,7 @@ export const defaultTokens: Token[] = [
     address: "0x0000000000000000000000000000000000000000",
     name: "USDC",
     symbol: "USDC",
-    decimals: 6,
+    decimals: 18,
     logoURI: "/img/usdc.webp",
     verified: true
   },
