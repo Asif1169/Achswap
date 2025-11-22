@@ -263,7 +263,7 @@ export default function Swap() {
       const provider = new BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
 
-      const amountBigInt = parseUnits(amount, 18);
+      const amountBigInt = parseUnits(amount, wusdcToken.decimals);
 
       // For native USDC, we send it to wUSDC contract's deposit function
       // The wUSDC contract receives native tokens and mints wrapped tokens
@@ -303,7 +303,7 @@ export default function Swap() {
       const provider = new BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
 
-      const amountBigInt = parseUnits(amount, 18);
+      const amountBigInt = parseUnits(amount, wusdcToken.decimals);
       const wusdcContract = new Contract(wusdcToken.address, WUSDC_ABI, signer);
 
       toast({

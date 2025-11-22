@@ -219,7 +219,7 @@ export default function RemoveLiquidity() {
 
       setPairAddress(pair);
 
-      // Get LP token balance
+      // Get LP token balance (LP tokens always use 18 decimals)
       const pairContract = new Contract(pair, ERC20_ABI, provider);
       const balance = await pairContract.balanceOf(address);
       setLpBalance(formatUnits(balance, 18));
