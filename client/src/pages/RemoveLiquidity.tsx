@@ -35,6 +35,8 @@ export default function RemoveLiquidity() {
   const [tokens, setTokens] = useState<Token[]>([]);
   const [pairAddress, setPairAddress] = useState<string | null>(null);
   const [lpBalance, setLpBalance] = useState<string>("0");
+  const [amountAToReceive, setAmountAToReceive] = useState<string>("0");
+  const [amountBToReceive, setAmountBToReceive] = useState<string>("0");
 
   const { address, isConnected } = useAccount();
   const { toast } = useToast();
@@ -48,6 +50,49 @@ export default function RemoveLiquidity() {
       fetchPairInfo();
     }
   }, [tokenA, tokenB, address]);
+
+  useEffect(() => {
+    const calculateAmountsToReceive = async () => {
+      if (!pairAddress || !tokenA || !tokenB || parseFloat(lpBalance) <= 0) {
+        setAmountAToReceive("0");
+        setAmountBToReceive("0");
+        return;
+      }
+
+      try {
+        if (!window.ethereum) return;
+
+        const provider = new BrowserProvider(window.ethereum);
+        const pairContract = new Contract(pairAddress, PAIR_ABI, provider);
+
+        const [reserve0, reserve1] = await pairContract.getReserves();
+        const totalSupply = await pairContract.totalSupply();
+        const token0Address = await pairContract.token0();
+
+        const liquidityToRemove = parseUnits(lpBalance, 18) * BigInt(percentage[0]) / 100n;
+
+        const amount0 = liquidityToRemove * reserve0 / totalSupply;
+        const amount1 = liquidityToRemove * reserve1 / totalSupply;
+
+        // Determine which token is token0
+        const isTokenAToken0 = tokenA.address.toLowerCase() === token0Address.toLowerCase();
+
+        if (isTokenAToken0) {
+          setAmountAToReceive(formatUnits(amount0, tokenA.decimals));
+          setAmountBToReceive(formatUnits(amount1, tokenB.decimals));
+        } else {
+          setAmountAToReceive(formatUnits(amount1, tokenA.decimals));
+          setAmountBToReceive(formatUnits(amount0, tokenB.decimals));
+        }
+      } catch (error) {
+        console.error('Failed to calculate amounts:', error);
+        setAmountAToReceive("0");
+        setAmountBToReceive("0");
+      }
+    };
+
+    calculateAmountsToReceive();
+  }, [pairAddress, tokenA, tokenB, lpBalance, percentage]);
 
   const loadTokens = async () => {
     try {
@@ -356,7 +401,7 @@ export default function RemoveLiquidity() {
                       )}
                       <span className="text-sm font-medium">{tokenA.symbol}</span>
                     </div>
-                    <span className="font-medium tabular-nums">~</span>
+                    <span className="font-medium tabular-nums">{parseFloat(amountAToReceive).toFixed(6)}</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -367,7 +412,7 @@ export default function RemoveLiquidity() {
                       )}
                       <span className="text-sm font-medium">{tokenB.symbol}</span>
                     </div>
-                    <span className="font-medium tabular-nums">~</span>
+                    <span className="font-medium tabular-nums">{parseFloat(amountBToReceive).toFixed(6)}</span>
                   </div>
                 </div>
               </div>

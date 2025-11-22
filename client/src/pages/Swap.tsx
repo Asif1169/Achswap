@@ -38,6 +38,7 @@ export default function Swap() {
   const [showWrapModal, setShowWrapModal] = useState(false);
   const [tokens, setTokens] = useState<Token[]>([]);
   const [isSwapping, setIsSwapping] = useState(false);
+  const [isLoadingQuote, setIsLoadingQuote] = useState(false);
 
   const { address, isConnected } = useAccount();
   const { toast } = useToast();
@@ -46,6 +47,51 @@ export default function Swap() {
   useEffect(() => {
     loadTokens();
   }, []);
+
+  // Fetch quote when fromAmount, fromToken, or toToken changes
+  useEffect(() => {
+    const fetchQuote = async () => {
+      if (!fromToken || !toToken || !fromAmount || parseFloat(fromAmount) <= 0) {
+        setToAmount("");
+        return;
+      }
+
+      // Handle wrap/unwrap - 1:1 ratio
+      const isWrap = fromToken.symbol === 'USDC' && toToken.symbol === 'wUSDC';
+      const isUnwrap = fromToken.symbol === 'wUSDC' && toToken.symbol === 'USDC';
+      
+      if (isWrap || isUnwrap) {
+        setToAmount(fromAmount);
+        return;
+      }
+
+      if (!window.ethereum) return;
+
+      setIsLoadingQuote(true);
+      try {
+        const provider = new BrowserProvider(window.ethereum);
+        const ROUTER_ADDRESS = "0xFb5B0cc9a61E76C5B5c60b52dF092F30B36c547e";
+        const ROUTER_ABI = [
+          "function getAmountsOut(uint amountIn, address[] memory path) public view returns (uint[] memory amounts)"
+        ];
+
+        const router = new Contract(ROUTER_ADDRESS, ROUTER_ABI, provider);
+        const amountIn = parseUnits(fromAmount, fromToken.decimals);
+        const path = [fromToken.address, toToken.address];
+
+        const amounts = await router.getAmountsOut(amountIn, path);
+        const outputAmount = formatUnits(amounts[1], toToken.decimals);
+        setToAmount(parseFloat(outputAmount).toFixed(6));
+      } catch (error) {
+        console.error('Failed to fetch quote:', error);
+        setToAmount("");
+      } finally {
+        setIsLoadingQuote(false);
+      }
+    };
+
+    fetchQuote();
+  }, [fromAmount, fromToken, toToken]);
 
   const loadTokens = async () => {
     try {
@@ -485,7 +531,7 @@ export default function Swap() {
               <Input
                 data-testid="input-to-amount"
                 type="number"
-                placeholder="0.00"
+                placeholder={isLoadingQuote ? "Calculating..." : "0.00"}
                 value={toAmount}
                 onChange={(e) => setToAmount(e.target.value)}
                 className="border-0 bg-transparent text-xl md:text-2xl font-semibold h-auto p-0 focus-visible:ring-0 focus-visible:ring-offset-0"
