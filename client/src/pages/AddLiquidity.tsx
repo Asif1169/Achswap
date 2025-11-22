@@ -266,16 +266,16 @@ export default function AddLiquidity() {
   };
 
   return (
-    <div className="container max-w-md mx-auto px-4 py-8">
-      <Card className="border-card-border">
-        <CardHeader className="space-y-1 pb-4">
-          <CardTitle className="text-2xl font-bold">Add Liquidity</CardTitle>
-          <p className="text-sm text-muted-foreground">
+    <div className="container max-w-md mx-auto px-4 py-4 md:py-8">
+      <Card className="border-border/40 shadow-xl backdrop-blur-sm bg-card/95">
+        <CardHeader className="space-y-1 pb-4 md:pb-6">
+          <CardTitle className="text-xl md:text-2xl font-bold">Add Liquidity</CardTitle>
+          <p className="text-xs md:text-sm text-muted-foreground">
             Add liquidity to earn fees on swaps
           </p>
         </CardHeader>
         
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-3 md:space-y-4">
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <label className="text-sm font-medium text-muted-foreground">Token A</label>
@@ -286,30 +286,30 @@ export default function AddLiquidity() {
               )}
             </div>
             
-            <div className="relative bg-muted rounded-lg p-4">
+            <div className="relative bg-muted/50 rounded-xl p-4 border border-border/40 hover:border-border/60 transition-colors">
               <Input
                 data-testid="input-token-a-amount"
                 type="number"
                 placeholder="0.00"
                 value={amountA}
                 onChange={(e) => setAmountA(e.target.value)}
-                className="border-0 bg-transparent text-2xl font-semibold h-auto p-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+                className="border-0 bg-transparent text-xl md:text-2xl font-semibold h-auto p-0 focus-visible:ring-0 focus-visible:ring-offset-0"
               />
               
               <Button
                 data-testid="button-select-token-a"
                 onClick={() => setShowTokenASelector(true)}
                 variant="secondary"
-                className="mt-3 w-full sm:w-auto"
+                className="mt-3 h-10 px-3 md:px-4 hover:bg-secondary/80"
               >
                 {tokenA ? (
                   <div className="flex items-center gap-2">
                     {tokenA.logoURI ? (
-                      <img src={tokenA.logoURI} alt={tokenA.symbol} className="w-5 h-5 rounded-full" />
+                      <img src={tokenA.logoURI} alt={tokenA.symbol} className="w-6 h-6 rounded-full" />
                     ) : (
-                      <div className="w-5 h-5 rounded-full bg-background" />
+                      <div className="w-6 h-6 rounded-full bg-background" />
                     )}
-                    <span className="font-semibold">{tokenA.symbol}</span>
+                    <span className="font-semibold text-sm md:text-base">{tokenA.symbol}</span>
                   </div>
                 ) : (
                   "Select token"
@@ -319,8 +319,8 @@ export default function AddLiquidity() {
           </div>
 
           <div className="flex justify-center -my-2">
-            <div className="rounded-full h-10 w-10 bg-background border-4 border-background flex items-center justify-center">
-              <Plus className="h-5 w-5 text-muted-foreground" />
+            <div className="rounded-full h-10 w-10 bg-card border-4 border-background flex items-center justify-center shadow-md">
+              <Plus className="h-5 w-5 text-primary" />
             </div>
           </div>
 
@@ -334,30 +334,30 @@ export default function AddLiquidity() {
               )}
             </div>
             
-            <div className="relative bg-muted rounded-lg p-4">
+            <div className="relative bg-muted/50 rounded-xl p-4 border border-border/40 hover:border-border/60 transition-colors">
               <Input
                 data-testid="input-token-b-amount"
                 type="number"
                 placeholder="0.00"
                 value={amountB}
                 onChange={(e) => setAmountB(e.target.value)}
-                className="border-0 bg-transparent text-2xl font-semibold h-auto p-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+                className="border-0 bg-transparent text-xl md:text-2xl font-semibold h-auto p-0 focus-visible:ring-0 focus-visible:ring-offset-0"
               />
               
               <Button
                 data-testid="button-select-token-b"
                 onClick={() => setShowTokenBSelector(true)}
                 variant="secondary"
-                className="mt-3 w-full sm:w-auto"
+                className="mt-3 h-10 px-3 md:px-4 hover:bg-secondary/80"
               >
                 {tokenB ? (
                   <div className="flex items-center gap-2">
                     {tokenB.logoURI ? (
-                      <img src={tokenB.logoURI} alt={tokenB.symbol} className="w-5 h-5 rounded-full" />
+                      <img src={tokenB.logoURI} alt={tokenB.symbol} className="w-6 h-6 rounded-full" />
                     ) : (
-                      <div className="w-5 h-5 rounded-full bg-background" />
+                      <div className="w-6 h-6 rounded-full bg-background" />
                     )}
-                    <span className="font-semibold">{tokenB.symbol}</span>
+                    <span className="font-semibold text-sm md:text-base">{tokenB.symbol}</span>
                   </div>
                 ) : (
                   "Select token"
@@ -367,7 +367,7 @@ export default function AddLiquidity() {
           </div>
 
           {tokenA && tokenB && (
-            <div className="bg-muted rounded-lg p-4 space-y-2">
+            <div className="bg-muted/50 rounded-xl p-4 space-y-2 border border-border/40">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Pool share</span>
                 <span className="font-medium">0%</span>
@@ -384,7 +384,7 @@ export default function AddLiquidity() {
               data-testid="button-add-liquidity"
               onClick={handleAddLiquidity}
               disabled={!tokenA || !tokenB || !amountA || !amountB || parseFloat(amountA) <= 0 || parseFloat(amountB) <= 0 || isAdding}
-              className="w-full h-14 text-base font-semibold"
+              className="w-full h-12 md:h-14 text-base md:text-lg font-semibold bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
               {isAdding ? "Adding Liquidity..." : "Add Liquidity"}
             </Button>
@@ -392,7 +392,7 @@ export default function AddLiquidity() {
             <Button
               data-testid="button-connect-wallet"
               disabled
-              className="w-full h-14 text-base font-semibold"
+              className="w-full h-12 md:h-14 text-base md:text-lg font-semibold"
             >
               Connect Wallet
             </Button>

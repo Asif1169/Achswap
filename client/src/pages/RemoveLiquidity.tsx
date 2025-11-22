@@ -254,16 +254,16 @@ export default function RemoveLiquidity() {
   };
 
   return (
-    <div className="container max-w-md mx-auto px-4 py-8">
-      <Card className="border-card-border">
-        <CardHeader className="space-y-1 pb-4">
-          <CardTitle className="text-2xl font-bold">Remove Liquidity</CardTitle>
-          <p className="text-sm text-muted-foreground">
+    <div className="container max-w-md mx-auto px-4 py-4 md:py-8">
+      <Card className="border-border/40 shadow-xl backdrop-blur-sm bg-card/95">
+        <CardHeader className="space-y-1 pb-4 md:pb-6">
+          <CardTitle className="text-xl md:text-2xl font-bold">Remove Liquidity</CardTitle>
+          <p className="text-xs md:text-sm text-muted-foreground">
             Remove liquidity to receive tokens back
           </p>
         </CardHeader>
         
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-4 md:space-y-6">
           <div className="space-y-4">
             <div className="flex gap-2">
               <Button
@@ -379,7 +379,7 @@ export default function RemoveLiquidity() {
               data-testid="button-remove-liquidity"
               onClick={handleRemoveLiquidity}
               disabled={!tokenA || !tokenB || !pairAddress || parseFloat(lpBalance) <= 0 || isRemoving}
-              className="w-full h-14 text-base font-semibold"
+              className="w-full h-12 md:h-14 text-base md:text-lg font-semibold bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
               {isRemoving ? "Removing Liquidity..." : "Remove Liquidity"}
             </Button>
@@ -387,7 +387,7 @@ export default function RemoveLiquidity() {
             <Button
               data-testid="button-connect-wallet"
               disabled
-              className="w-full h-14 text-base font-semibold"
+              className="w-full h-12 md:h-14 text-base md:text-lg font-semibold"
             >
               Connect Wallet
             </Button>

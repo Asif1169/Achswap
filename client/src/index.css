@@ -2,6 +2,25 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-gradient-to-br from-background via-background to-muted/20;
+    @apply min-h-screen;
+  }
+}
+
+@layer utilities {
+  .hover-elevate {
+    @apply transition-all duration-200 hover:scale-[1.02] hover:shadow-md;
+  }
+  .active-elevate-2 {
+    @apply active:scale-[0.98];
+  }
+}
+
 /* LIGHT MODE */
 :root {
   --button-outline: rgba(0,0,0, .10);

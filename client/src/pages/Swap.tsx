@@ -388,23 +388,24 @@ export default function Swap() {
   const wusdcToken = tokens.find(t => t.symbol === 'wUSDC');
 
   return (
-    <div className="container max-w-md mx-auto px-4 py-8">
-      <Card className="border-card-border">
-        <CardHeader className="space-y-1 pb-4">
+    <div className="container max-w-md mx-auto px-4 py-4 md:py-8">
+      <Card className="border-border/40 shadow-xl backdrop-blur-sm bg-card/95">
+        <CardHeader className="space-y-1 pb-4 md:pb-6">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-2xl font-bold">Swap</CardTitle>
+            <CardTitle className="text-xl md:text-2xl font-bold">Swap Tokens</CardTitle>
             <Button 
               data-testid="button-settings"
               size="icon" 
               variant="ghost"
-              className="h-9 w-9"
+              className="h-9 w-9 hover:bg-accent/50"
             >
               <Settings className="h-4 w-4" />
             </Button>
           </div>
+          <p className="text-xs md:text-sm text-muted-foreground">Trade tokens instantly with the best rates</p>
         </CardHeader>
         
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-3 md:space-y-4">
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <label className="text-sm font-medium text-muted-foreground">From</label>
@@ -415,35 +416,37 @@ export default function Swap() {
               )}
             </div>
             
-            <div className="relative bg-muted rounded-lg p-4">
+            <div className="relative bg-muted/50 rounded-xl p-4 border border-border/40 hover:border-border/60 transition-colors">
               <Input
                 data-testid="input-from-amount"
                 type="number"
                 placeholder="0.00"
                 value={fromAmount}
                 onChange={(e) => setFromAmount(e.target.value)}
-                className="border-0 bg-transparent text-2xl font-semibold h-auto p-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+                className="border-0 bg-transparent text-xl md:text-2xl font-semibold h-auto p-0 focus-visible:ring-0 focus-visible:ring-offset-0"
               />
               
-              <Button
-                data-testid="button-select-from-token"
-                onClick={() => setShowFromSelector(true)}
-                variant="secondary"
-                className="mt-3 w-full sm:w-auto"
-              >
-                {fromToken ? (
-                  <div className="flex items-center gap-2">
-                    {fromToken.logoURI ? (
-                      <img src={fromToken.logoURI} alt={fromToken.symbol} className="w-5 h-5 rounded-full" />
-                    ) : (
-                      <div className="w-5 h-5 rounded-full bg-background" />
-                    )}
-                    <span className="font-semibold">{fromToken.symbol}</span>
-                  </div>
-                ) : (
-                  "Select token"
-                )}
-              </Button>
+              <div className="flex items-center justify-between mt-3">
+                <Button
+                  data-testid="button-select-from-token"
+                  onClick={() => setShowFromSelector(true)}
+                  variant="secondary"
+                  className="h-10 px-3 md:px-4 hover:bg-secondary/80"
+                >
+                  {fromToken ? (
+                    <div className="flex items-center gap-2">
+                      {fromToken.logoURI ? (
+                        <img src={fromToken.logoURI} alt={fromToken.symbol} className="w-6 h-6 rounded-full" />
+                      ) : (
+                        <div className="w-6 h-6 rounded-full bg-background" />
+                      )}
+                      <span className="font-semibold text-sm md:text-base">{fromToken.symbol}</span>
+                    </div>
+                  ) : (
+                    "Select token"
+                  )}
+                </Button>
+              </div>
             </div>
           </div>
 
@@ -454,7 +457,7 @@ export default function Swap() {
               variant="ghost"
               onClick={handleSwapTokens}
               disabled={!fromToken || !toToken}
-              className="rounded-full h-10 w-10 bg-background border-4 border-background hover:bg-muted"
+              className="rounded-full h-10 w-10 bg-card border-4 border-background hover:bg-primary hover:text-primary-foreground transition-all shadow-md disabled:opacity-50"
             >
               <ArrowDownUp className="h-4 w-4" />
             </Button>
@@ -470,36 +473,38 @@ export default function Swap() {
               )}
             </div>
             
-            <div className="relative bg-muted rounded-lg p-4">
+            <div className="relative bg-muted/50 rounded-xl p-4 border border-border/40 hover:border-border/60 transition-colors">
               <Input
                 data-testid="input-to-amount"
                 type="number"
                 placeholder="0.00"
                 value={toAmount}
                 onChange={(e) => setToAmount(e.target.value)}
-                className="border-0 bg-transparent text-2xl font-semibold h-auto p-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+                className="border-0 bg-transparent text-xl md:text-2xl font-semibold h-auto p-0 focus-visible:ring-0 focus-visible:ring-offset-0"
                 disabled
               />
               
-              <Button
-                data-testid="button-select-to-token"
-                onClick={() => setShowToSelector(true)}
-                variant="secondary"
-                className="mt-3 w-full sm:w-auto"
-              >
-                {toToken ? (
-                  <div className="flex items-center gap-2">
-                    {toToken.logoURI ? (
-                      <img src={toToken.logoURI} alt={toToken.symbol} className="w-5 h-5 rounded-full" />
-                    ) : (
-                      <div className="w-5 h-5 rounded-full bg-background" />
-                    )}
-                    <span className="font-semibold">{toToken.symbol}</span>
-                  </div>
-                ) : (
-                  "Select token"
-                )}
-              </Button>
+              <div className="flex items-center justify-between mt-3">
+                <Button
+                  data-testid="button-select-to-token"
+                  onClick={() => setShowToSelector(true)}
+                  variant="secondary"
+                  className="h-10 px-3 md:px-4 hover:bg-secondary/80"
+                >
+                  {toToken ? (
+                    <div className="flex items-center gap-2">
+                      {toToken.logoURI ? (
+                        <img src={toToken.logoURI} alt={toToken.symbol} className="w-6 h-6 rounded-full" />
+                      ) : (
+                        <div className="w-6 h-6 rounded-full bg-background" />
+                      )}
+                      <span className="font-semibold text-sm md:text-base">{toToken.symbol}</span>
+                    </div>
+                  ) : (
+                    "Select token"
+                  )}
+                </Button>
+              </div>
             </div>
           </div>
 
@@ -508,7 +513,7 @@ export default function Swap() {
               data-testid="button-swap"
               onClick={handleSwap}
               disabled={!fromToken || !toToken || !fromAmount || parseFloat(fromAmount) <= 0 || isSwapping}
-              className="w-full h-14 text-base font-semibold"
+              className="w-full h-12 md:h-14 text-base md:text-lg font-semibold bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
               {isSwapping ? "Swapping..." : "Swap"}
             </Button>
@@ -516,7 +521,7 @@ export default function Swap() {
             <Button
               data-testid="button-connect-wallet"
               disabled
-              className="w-full h-14 text-base font-semibold"
+              className="w-full h-12 md:h-14 text-base md:text-lg font-semibold"
             >
               Connect Wallet
             </Button>
