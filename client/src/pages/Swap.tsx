@@ -141,15 +141,19 @@ export default function Swap() {
         setToAmount(outputAmount);
 
         // Calculate price impact
-        // For tokens with same decimals, compare at same precision
-        // For different decimals, normalize before comparing
-        const fromAmountNum = parseFloat(fromAmount);
-        const outputAmountNum = parseFloat(outputAmount);
+        // Normalize both amounts to same decimal precision (18 decimals) for accurate comparison
+        const fromAmountBigInt = parseAmount(fromAmount, fromToken.decimals);
+        const outputAmountBigInt = amounts[amounts.length - 1];
+        
+        // Convert both to 18 decimals for comparison
+        const fromNormalized = fromAmountBigInt * (10n ** BigInt(Math.max(0, 18 - fromToken.decimals)));
+        const outputNormalized = outputAmountBigInt * (10n ** BigInt(Math.max(0, 18 - toToken.decimals)));
 
-        if (fromAmountNum > 0 && outputAmountNum > 0) {
-          // Price impact = abs((input - output) / input) * 100
-          // This works regardless of token pair as it compares normalized values
-          const impact = Math.abs((fromAmountNum - outputAmountNum) / fromAmountNum) * 100;
+        if (fromNormalized > 0n && outputNormalized > 0n) {
+          // Calculate impact: |1 - (output / input)| * 100
+          // Using bigint arithmetic for precision
+          const ratio = (outputNormalized * 10000n) / fromNormalized; // multiply by 10000 for precision
+          const impact = Number(ratio > 10000n ? ratio - 10000n : 10000n - ratio) / 100;
           setPriceImpact(impact);
         } else {
           setPriceImpact(0);

@@ -109,6 +109,7 @@ export function safeDivide(numerator: bigint, denominator: bigint): bigint {
 /**
  * Calculate ratio between two amounts with their decimals
  * Returns the ratio as a formatted string
+ * Uses bigint arithmetic for precision with any decimal combination
  */
 export function calculateRatio(
   amount1: bigint,
@@ -119,16 +120,22 @@ export function calculateRatio(
   try {
     if (amount1 === 0n || amount2 === 0n) return "0";
 
-    // Convert to same decimal places for comparison
-    let ratio: number;
-    if (decimals1 === decimals2) {
-      ratio = Number(amount1) / Number(amount2);
-    } else {
-      const formatted1 = parseFloat(formatUnits(amount1, decimals1));
-      const formatted2 = parseFloat(formatUnits(amount2, decimals2));
-      ratio = formatted1 / formatted2;
-    }
-
+    // For accurate ratio calculation with different decimals:
+    // ratio = amount1 / amount2 (in real terms)
+    // To handle different decimals, normalize first
+    // Multiply by 10^6 for precision in the result
+    const PRECISION = 1000000n; // 6 decimal places of precision
+    
+    // Normalize amounts to 18 decimals for calculation
+    const amount1Normalized = amount1 * (10n ** BigInt(Math.max(0, 18 - decimals1)));
+    const amount2Normalized = amount2 * (10n ** BigInt(Math.max(0, 18 - decimals2)));
+    
+    // Calculate ratio with precision
+    const ratioWithPrecision = (amount1Normalized * PRECISION) / amount2Normalized;
+    
+    // Convert back to number and format
+    const ratio = Number(ratioWithPrecision) / Number(PRECISION);
+    
     if (!isNaN(ratio) && isFinite(ratio)) {
       return parseFloat(ratio.toFixed(6)).toString();
     }

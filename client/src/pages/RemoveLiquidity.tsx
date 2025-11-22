@@ -87,6 +87,7 @@ export default function RemoveLiquidity() {
         const tokenBAddress = tokenB.address === "0x0000000000000000000000000000000000000000" ? wusdcAddress : tokenB.address;
         const isTokenAToken0 = tokenAAddress.toLowerCase() === token0Address.toLowerCase();
 
+        // Reserves are in the token's native decimals, so we can format directly
         if (isTokenAToken0) {
           setAmountAToReceive(formatAmount(amount0, tokenA.decimals));
           setAmountBToReceive(formatAmount(amount1, tokenB.decimals));
@@ -195,11 +196,24 @@ export default function RemoveLiquidity() {
 
       const factory = new Contract(FACTORY_ADDRESS, FACTORY_ABI, provider);
       
-      // Use actual token addresses for pool lookup (pools use the ERC20 tokens directly)
-      const tokenAAddress = tokenA.address;
-      const tokenBAddress = tokenB.address;
+      // Get wUSDC for native USDC conversion
+      const wusdcToken = tokens.find(t => t.symbol === 'wUSDC');
+      const wusdcAddress = wusdcToken?.address;
 
-      console.log('Looking up pair:', { tokenAAddress, tokenBAddress, factoryAddress: FACTORY_ADDRESS });
+      if (!wusdcAddress) {
+        console.error('wUSDC token not found');
+        setPairAddress(null);
+        setLpBalance("0");
+        return;
+      }
+
+      // Convert native USDC to wUSDC for pool lookup
+      const isTokenANative = tokenA.address === "0x0000000000000000000000000000000000000000";
+      const isTokenBNative = tokenB.address === "0x0000000000000000000000000000000000000000";
+      const tokenAAddress = isTokenANative ? wusdcAddress : tokenA.address;
+      const tokenBAddress = isTokenBNative ? wusdcAddress : tokenB.address;
+
+      console.log('Looking up pair:', { tokenAAddress, tokenBAddress, isTokenANative, isTokenBNative, factoryAddress: FACTORY_ADDRESS });
       const pair = await factory.getPair(tokenAAddress, tokenBAddress);
       console.log('Pair found:', pair);
 
@@ -208,7 +222,7 @@ export default function RemoveLiquidity() {
         setLpBalance("0");
         toast({
           title: "Pool not found",
-          description: "No liquidity pool exists for this token pair. Pools use wUSDC instead of native USDC.",
+          description: "No liquidity pool exists for this token pair",
           variant: "destructive",
         });
         return;

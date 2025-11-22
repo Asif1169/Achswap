@@ -76,11 +76,26 @@ export default function AddLiquidity() {
         const provider = new BrowserProvider(window.ethereum);
         const factory = new Contract(FACTORY_ADDRESS, FACTORY_ABI, provider);
 
-        // Use actual token addresses for pool lookup (pools use the ERC20 tokens directly)
-        const tokenAAddress = tokenA.address;
-        const tokenBAddress = tokenB.address;
+        // Get wUSDC for native USDC conversion
+        const wusdcToken = tokens.find(t => t.symbol === 'wUSDC');
+        const wusdcAddress = wusdcToken?.address;
 
-        console.log('Checking pair:', { tokenAAddress, tokenBAddress, factoryAddress: FACTORY_ADDRESS });
+        if (!wusdcAddress) {
+          console.error('wUSDC token not found');
+          setPairExists(false);
+          setReserveA(0n);
+          setReserveB(0n);
+          setIsLoadingPair(false);
+          return;
+        }
+
+        // Convert native USDC to wUSDC for pool lookup
+        const isTokenANative = tokenA.address === "0x0000000000000000000000000000000000000000";
+        const isTokenBNative = tokenB.address === "0x0000000000000000000000000000000000000000";
+        const tokenAAddress = isTokenANative ? wusdcAddress : tokenA.address;
+        const tokenBAddress = isTokenBNative ? wusdcAddress : tokenB.address;
+
+        console.log('Checking pair:', { tokenAAddress, tokenBAddress, isTokenANative, isTokenBNative, factoryAddress: FACTORY_ADDRESS });
 
         const pairAddress = await factory.getPair(tokenAAddress, tokenBAddress);
         console.log('Pair lookup result:', pairAddress);
@@ -101,7 +116,7 @@ export default function AddLiquidity() {
 
           console.log('Reserves:', { reserve0: reserve0.toString(), reserve1: reserve1.toString(), token0: token0Address });
 
-          // Determine which reserve corresponds to which token
+          // Determine which reserve corresponds to which token (using pool addresses)
           if (tokenAAddress.toLowerCase() === token0Address.toLowerCase()) {
             setReserveA(reserve0);
             setReserveB(reserve1);
@@ -139,16 +154,14 @@ export default function AddLiquidity() {
 
     try {
       const amountABigInt = parseAmount(amountA, tokenA.decimals);
-      // Proper ratio calculation handling different decimals:
-      // ratio = reserveB / reserveA (normalized to same decimals)
-      // amountB = amountA * (reserveB / reserveA)
       
-      // Normalize both reserves to 18 decimals for calculation
-      const reserveANorm = reserveA * (10n ** BigInt(Math.max(0, 18 - tokenA.decimals)));
-      const reserveBNorm = reserveB * (10n ** BigInt(Math.max(0, 18 - tokenB.decimals)));
-      
-      // Calculate: amountB = amountA * reserveB / reserveA (using normalized reserves)
-      const amountBBigInt = (amountABigInt * reserveBNorm) / reserveANorm;
+      // Calculate amountB = amountA * reserveB / reserveA
+      // This works for any decimal combination because:
+      // - amountABigInt is in tokenA's decimals
+      // - reserveA is in tokenA's decimals
+      // - reserveB is in tokenB's decimals
+      // - Result will be in tokenB's decimals
+      const amountBBigInt = (amountABigInt * reserveB) / reserveA;
       const calculatedAmountB = formatAmount(amountBBigInt, tokenB.decimals);
       setAmountB(calculatedAmountB);
     } catch (error) {
@@ -317,6 +330,14 @@ export default function AddLiquidity() {
       // Deadline: 20 minutes from now
       const deadline = Math.floor(Date.now() / 1000) + 60 * 20;
 
+      // Get wUSDC for native USDC conversion
+      const wusdcToken = tokens.find(t => t.symbol === 'wUSDC');
+      const wusdcAddress = wusdcToken?.address;
+      
+      if (!wusdcAddress) {
+        throw new Error("wUSDC token not found");
+      }
+
       console.log('Adding liquidity:', {
         tokenA: tokenA.symbol,
         tokenB: tokenB.symbol,
@@ -331,9 +352,9 @@ export default function AddLiquidity() {
         description: `Adding ${amountA} ${tokenA.symbol} and ${amountB} ${tokenB.symbol}`,
       });
 
-      // Use actual token addresses (pools are created with ERC20 tokens directly)
-      const tokenAAddress = tokenA.address;
-      const tokenBAddress = tokenB.address;
+      // Convert native USDC to wUSDC for pool operations
+      const tokenAAddress = isTokenANative ? wusdcAddress : tokenA.address;
+      const tokenBAddress = isTokenBNative ? wusdcAddress : tokenB.address;
 
       let tx;
 
