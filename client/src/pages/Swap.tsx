@@ -139,11 +139,19 @@ export default function Swap() {
         setToAmount(parseFloat(outputAmount).toFixed(6));
 
         // Calculate price impact
-        // Price impact = (1 - (output / expected output at 1:1)) * 100
-        const expectedOutput = parseFloat(fromAmount);
-        const actualOutput = parseFloat(outputAmount);
-        const impact = ((expectedOutput - actualOutput) / expectedOutput) * 100;
-        setPriceImpact(impact);
+        // For tokens with same decimals, compare at same precision
+        // For different decimals, normalize before comparing
+        const fromAmountNum = parseFloat(fromAmount);
+        const outputAmountNum = parseFloat(outputAmount);
+        
+        if (fromAmountNum > 0 && outputAmountNum > 0) {
+          // Price impact = abs((input - output) / input) * 100
+          // This works regardless of token pair as it compares normalized values
+          const impact = Math.abs((fromAmountNum - outputAmountNum) / fromAmountNum) * 100;
+          setPriceImpact(impact);
+        } else {
+          setPriceImpact(0);
+        }
       } catch (error) {
         console.error('Failed to fetch quote:', error);
         setToAmount("");
@@ -623,8 +631,32 @@ export default function Swap() {
     ...(toToken && !isToTokenNative ? { token: toToken.address as `0x${string}` } : {}),
   });
 
-  const fromBalanceFormatted = fromBalance ? parseFloat(formatUnits(fromBalance.value, fromBalance.decimals)).toFixed(6) : "0.00";
-  const toBalanceFormatted = toBalance ? parseFloat(formatUnits(toBalance.value, toBalance.decimals)).toFixed(6) : "0.00";
+  let fromBalanceFormatted = "0.00";
+  let toBalanceFormatted = "0.00";
+  
+  try {
+    if (fromBalance) {
+      const formatted = formatUnits(fromBalance.value, fromBalance.decimals);
+      const num = parseFloat(formatted);
+      if (!isNaN(num) && isFinite(num)) {
+        fromBalanceFormatted = num.toFixed(6);
+      }
+    }
+  } catch (error) {
+    console.error('Error formatting fromBalance', error);
+  }
+  
+  try {
+    if (toBalance) {
+      const formatted = formatUnits(toBalance.value, toBalance.decimals);
+      const num = parseFloat(formatted);
+      if (!isNaN(num) && isFinite(num)) {
+        toBalanceFormatted = num.toFixed(6);
+      }
+    }
+  } catch (error) {
+    console.error('Error formatting toBalance', error);
+  }
 
   const usdcToken = tokens.find(t => t.symbol === 'USDC');
   const wusdcToken = tokens.find(t => t.symbol === 'wUSDC');

@@ -141,8 +141,19 @@ function TokenRow({ token, userAddress, onClick }: { token: Token; userAddress?:
     ...(isNativeToken ? {} : { token: token.address as `0x${string}` }),
   });
 
-  const formattedBalance = balance ? formatUnits(balance.value, balance.decimals) : "0.00";
-  const displayBalance = parseFloat(formattedBalance).toFixed(6);
+  let displayBalance = "0.00";
+  try {
+    if (balance) {
+      const formattedBalance = formatUnits(balance.value, balance.decimals);
+      const numBalance = parseFloat(formattedBalance);
+      if (!isNaN(numBalance) && isFinite(numBalance)) {
+        displayBalance = numBalance.toFixed(6);
+      }
+    }
+  } catch (error) {
+    console.error('Error formatting balance for', token.symbol, error);
+    displayBalance = "0.00";
+  }
 
   return (
     <button

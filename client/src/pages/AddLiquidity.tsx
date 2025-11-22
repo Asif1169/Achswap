@@ -56,16 +56,6 @@ export default function AddLiquidity() {
     loadTokens();
   }, []);
 
-  const { refetch: refetchBalanceA } = useBalance({
-    address: address as `0x${string}` | undefined,
-    ...(tokenA && !isTokenANative ? { token: tokenA.address as `0x${string}` } : {}),
-  });
-
-  const { refetch: refetchBalanceB } = useBalance({
-    address: address as `0x${string}` | undefined,
-    ...(tokenB && !isTokenBNative ? { token: tokenB.address as `0x${string}` } : {}),
-  });
-
   const openExplorer = (txHash: string) => {
     window.open(`${ARCscan_EXPLORER_URL}${txHash}`, "_blank");
   };
@@ -206,7 +196,7 @@ export default function AddLiquidity() {
       }
 
       const imported = localStorage.getItem('importedTokens');
-      const importedTokens = imported ? JSON.JSON.parse(imported) : [];
+      const importedTokens = imported ? JSON.parse(imported) : [];
 
       const alreadyImported = importedTokens.find((t: Token) => t.address.toLowerCase() === address.toLowerCase());
       if (!alreadyImported) {
@@ -251,18 +241,42 @@ export default function AddLiquidity() {
   const isTokenANative = tokenA?.address === "0x0000000000000000000000000000000000000000";
   const isTokenBNative = tokenB?.address === "0x0000000000000000000000000000000000000000";
 
-  const { data: balanceA, refetch: refetchBalanceA_hook } = useBalance({
+  const { data: balanceA, refetch: refetchBalanceA } = useBalance({
     address: address as `0x${string}` | undefined,
     ...(tokenA && !isTokenANative ? { token: tokenA.address as `0x${string}` } : {}),
   });
 
-  const { data: balanceB, refetch: refetchBalanceB_hook } = useBalance({
+  const { data: balanceB, refetch: refetchBalanceB } = useBalance({
     address: address as `0x${string}` | undefined,
     ...(tokenB && !isTokenBNative ? { token: tokenB.address as `0x${string}` } : {}),
   });
 
-  const balanceAFormatted = balanceA ? parseFloat(formatUnits(balanceA.value, balanceA.decimals)).toFixed(6) : "0.00";
-  const balanceBFormatted = balanceB ? parseFloat(formatUnits(balanceB.value, balanceB.decimals)).toFixed(6) : "0.00";
+  let balanceAFormatted = "0.00";
+  let balanceBFormatted = "0.00";
+  
+  try {
+    if (balanceA) {
+      const formatted = formatUnits(balanceA.value, balanceA.decimals);
+      const num = parseFloat(formatted);
+      if (!isNaN(num) && isFinite(num)) {
+        balanceAFormatted = num.toFixed(6);
+      }
+    }
+  } catch (error) {
+    console.error('Error formatting balanceA', error);
+  }
+  
+  try {
+    if (balanceB) {
+      const formatted = formatUnits(balanceB.value, balanceB.decimals);
+      const num = parseFloat(formatted);
+      if (!isNaN(num) && isFinite(num)) {
+        balanceBFormatted = num.toFixed(6);
+      }
+    }
+  } catch (error) {
+    console.error('Error formatting balanceB', error);
+  }
 
   const handleAddLiquidity = async () => {
     if (!tokenA || !tokenB || !amountA || !amountB || parseFloat(amountA) <= 0 || parseFloat(amountB) <= 0) return;
@@ -326,7 +340,7 @@ export default function AddLiquidity() {
             const approveReceipt = await approveTx.wait();
 
             // Refetch balances after approval
-            await Promise.all([refetchBalanceA_hook(), refetchBalanceB_hook()]);
+            await Promise.all([refetchBalanceA(), refetchBalanceB()]);
 
             toast({
               title: "Approval successful",
@@ -370,7 +384,7 @@ export default function AddLiquidity() {
           const approveReceipt = await approveTx.wait();
 
           // Refetch balances after approval
-          await Promise.all([refetchBalanceA_hook(), refetchBalanceB_hook()]);
+          await Promise.all([refetchBalanceA(), refetchBalanceB()]);
 
           toast({
             title: "Approval successful",
@@ -395,7 +409,7 @@ export default function AddLiquidity() {
           const approveReceipt = await approveTx.wait();
 
           // Refetch balances after approval
-          await Promise.all([refetchBalanceA_hook(), refetchBalanceB_hook()]);
+          await Promise.all([refetchBalanceA(), refetchBalanceB()]);
 
           toast({
             title: "Approval successful",
@@ -433,7 +447,7 @@ export default function AddLiquidity() {
       setAmountB("");
 
       // Refetch balances after adding liquidity
-      await Promise.all([refetchBalanceA_hook(), refetchBalanceB_hook()]);
+      await Promise.all([refetchBalanceA(), refetchBalanceB()]);
 
       toast({
         title: "Liquidity added!",
