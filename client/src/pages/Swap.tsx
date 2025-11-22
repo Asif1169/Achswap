@@ -78,7 +78,7 @@ export default function Swap() {
         const router = new Contract(ROUTER_ADDRESS, ROUTER_ABI, provider);
         const amountIn = parseUnits(fromAmount, fromToken.decimals);
         
-        // Build path - use wUSDC as intermediate if needed
+        // Build path - use wUSDC for liquidity pool routing
         let path: string[] = [];
         const isFromNative = fromToken.address === "0x0000000000000000000000000000000000000000";
         const isToNative = toToken.address === "0x0000000000000000000000000000000000000000";
@@ -86,12 +86,32 @@ export default function Swap() {
         // Get wUSDC address for routing
         const wusdcAddress = tokens.find(t => t.symbol === 'wUSDC')?.address;
         
-        if (isFromNative || isToNative) {
-          path = [fromToken.address, toToken.address];
-        } else if (wusdcAddress && fromToken.address !== wusdcAddress && toToken.address !== wusdcAddress) {
-          path = [fromToken.address, wusdcAddress, toToken.address];
+        if (!wusdcAddress) {
+          throw new Error("wUSDC token not found");
+        }
+
+        // For native USDC swaps, use wUSDC in the path since pools use wUSDC
+        if (isFromNative && !isToNative) {
+          if (toToken.address === wusdcAddress) {
+            path = [wusdcAddress, wusdcAddress];
+          } else {
+            path = [wusdcAddress, toToken.address];
+          }
+        } else if (!isFromNative && isToNative) {
+          if (fromToken.address === wusdcAddress) {
+            path = [wusdcAddress, wusdcAddress];
+          } else {
+            path = [fromToken.address, wusdcAddress];
+          }
+        } else if (isFromNative && isToNative) {
+          path = [wusdcAddress, wusdcAddress];
         } else {
-          path = [fromToken.address, toToken.address];
+          // Both are ERC20 tokens
+          if (fromToken.address === wusdcAddress || toToken.address === wusdcAddress) {
+            path = [fromToken.address, toToken.address];
+          } else {
+            path = [fromToken.address, wusdcAddress, toToken.address];
+          }
         }
 
         let amounts;
@@ -101,7 +121,11 @@ export default function Swap() {
           // If multi-hop fails, try direct path
           if (path.length > 2) {
             path = [fromToken.address, toToken.address];
-            amounts = await router.getAmountsOut(amountIn, path);
+            try {
+              amounts = await router.getAmountsOut(amountIn, path);
+            } catch {
+              throw error;
+            }
           } else {
             throw error;
           }
@@ -351,7 +375,7 @@ export default function Swap() {
       const router = new Contract(ROUTER_ADDRESS, ROUTER_ABI, signer);
       const amountIn = parseUnits(fromAmount, fromToken.decimals);
 
-      // Build path - use wUSDC as intermediate if tokens don't have direct pair
+      // Build path - use wUSDC for liquidity pool routing
       let path: string[] = [];
       const isFromNative = fromToken.address === "0x0000000000000000000000000000000000000000";
       const isToNative = toToken.address === "0x0000000000000000000000000000000000000000";
@@ -359,15 +383,38 @@ export default function Swap() {
       // Get wUSDC address for routing
       const wusdcAddress = wusdcToken?.address;
       
-      if (isFromNative || isToNative) {
-        // Direct path for native swaps
-        path = [fromToken.address, toToken.address];
-      } else if (wusdcAddress && fromToken.address !== wusdcAddress && toToken.address !== wusdcAddress) {
-        // Use wUSDC as intermediate token for better routing
-        path = [fromToken.address, wusdcAddress, toToken.address];
+      if (!wusdcAddress) {
+        throw new Error("wUSDC token not found");
+      }
+
+      // For native USDC swaps, use wUSDC in the path since pools use wUSDC
+      if (isFromNative && !isToNative) {
+        // Swapping native USDC to token: USDC -> wUSDC -> token
+        if (toToken.address === wusdcAddress) {
+          // Direct USDC to wUSDC (this is handled by wrap function)
+          path = [wusdcAddress, wusdcAddress];
+        } else {
+          path = [wusdcAddress, toToken.address];
+        }
+      } else if (!isFromNative && isToNative) {
+        // Swapping token to native USDC: token -> wUSDC -> USDC
+        if (fromToken.address === wusdcAddress) {
+          path = [wusdcAddress, wusdcAddress];
+        } else {
+          path = [fromToken.address, wusdcAddress];
+        }
+      } else if (isFromNative && isToNative) {
+        // Both native (shouldn't happen, but handle it)
+        path = [wusdcAddress, wusdcAddress];
       } else {
-        // Direct path
-        path = [fromToken.address, toToken.address];
+        // Both are ERC20 tokens
+        if (fromToken.address === wusdcAddress || toToken.address === wusdcAddress) {
+          // Direct path if one is wUSDC
+          path = [fromToken.address, toToken.address];
+        } else {
+          // Use wUSDC as intermediate
+          path = [fromToken.address, wusdcAddress, toToken.address];
+        }
       }
 
       // Get expected output
@@ -378,9 +425,13 @@ export default function Swap() {
         // If multi-hop fails, try direct path
         if (path.length > 2) {
           path = [fromToken.address, toToken.address];
-          amounts = await router.getAmountsOut(amountIn, path);
+          try {
+            amounts = await router.getAmountsOut(amountIn, path);
+          } catch {
+            throw new Error("No liquidity pool exists for this token pair. Try using wUSDC instead of USDC.");
+          }
         } else {
-          throw new Error("No liquidity pool exists for this token pair");
+          throw new Error("No liquidity pool exists for this token pair. Try using wUSDC instead of USDC.");
         }
       }
       
