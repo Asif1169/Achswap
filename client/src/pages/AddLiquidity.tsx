@@ -13,6 +13,8 @@ const ERC20_ABI = [
   "function name() view returns (string)",
   "function symbol() view returns (string)",
   "function decimals() view returns (uint8)",
+  "function approve(address spender, uint256 amount) returns (bool)",
+  "function allowance(address owner, address spender) view returns (uint256)",
 ];
 
 export default function AddLiquidity() {
@@ -150,25 +152,112 @@ export default function AddLiquidity() {
     
     setIsAdding(true);
     try {
-      // TODO: Implement actual liquidity provision with smart contract
+      if (!address || !window.ethereum) {
+        throw new Error("Please connect your wallet");
+      }
+
+      const provider = new BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      
+      const ROUTER_ADDRESS = "0xFb5B0cc9a61E76C5B5c60b52dF092F30B36c547e";
+      const ROUTER_ABI = [
+        "function addLiquidity(address tokenA, address tokenB, uint amountADesired, uint amountBDesired, uint amountAMin, uint amountBMin, address to, uint deadline) external returns (uint amountA, uint amountB, uint liquidity)",
+        "function addLiquidityETH(address token, uint amountTokenDesired, uint amountTokenMin, uint amountETHMin, address to, uint deadline) external payable returns (uint amountToken, uint amountETH, uint liquidity)"
+      ];
+
+      const router = new Contract(ROUTER_ADDRESS, ROUTER_ABI, signer);
+      
+      const amountADesired = parseUnits(amountA, tokenA.decimals);
+      const amountBDesired = parseUnits(amountB, tokenB.decimals);
+      
+      // 5% slippage tolerance
+      const amountAMin = amountADesired * 95n / 100n;
+      const amountBMin = amountBDesired * 95n / 100n;
+      
+      // Deadline: 20 minutes from now
+      const deadline = Math.floor(Date.now() / 1000) + 60 * 20;
+
       toast({
         title: "Adding liquidity",
         description: `Adding ${amountA} ${tokenA.symbol} and ${amountB} ${tokenB.symbol}`,
       });
+
+      const isTokenANative = tokenA.address === "0x0000000000000000000000000000000000000000";
+      const isTokenBNative = tokenB.address === "0x0000000000000000000000000000000000000000";
+
+      let tx;
+
+      if (isTokenANative || isTokenBNative) {
+        // Add liquidity with native USDC (acts as ETH)
+        const token = isTokenANative ? tokenB : tokenA;
+        const tokenAmount = isTokenANative ? amountBDesired : amountADesired;
+        const tokenAmountMin = isTokenANative ? amountBMin : amountAMin;
+        const ethAmount = isTokenANative ? amountADesired : amountBDesired;
+        const ethAmountMin = isTokenANative ? amountAMin : amountBMin;
+
+        // Approve token
+        const tokenContract = new Contract(token.address, ERC20_ABI, signer);
+        const allowance = await tokenContract.allowance(address, ROUTER_ADDRESS);
+        
+        if (allowance < tokenAmount) {
+          const approveTx = await tokenContract.approve(ROUTER_ADDRESS, tokenAmount);
+          await approveTx.wait();
+        }
+
+        tx = await router.addLiquidityETH(
+          token.address,
+          tokenAmount,
+          tokenAmountMin,
+          ethAmountMin,
+          address,
+          deadline,
+          { value: ethAmount }
+        );
+      } else {
+        // Add liquidity with two ERC20 tokens
+        // Approve both tokens
+        const tokenAContract = new Contract(tokenA.address, ERC20_ABI, signer);
+        const tokenBContract = new Contract(tokenB.address, ERC20_ABI, signer);
+        
+        const allowanceA = await tokenAContract.allowance(address, ROUTER_ADDRESS);
+        const allowanceB = await tokenBContract.allowance(address, ROUTER_ADDRESS);
+        
+        if (allowanceA < amountADesired) {
+          const approveTx = await tokenAContract.approve(ROUTER_ADDRESS, amountADesired);
+          await approveTx.wait();
+        }
+        
+        if (allowanceB < amountBDesired) {
+          const approveTx = await tokenBContract.approve(ROUTER_ADDRESS, amountBDesired);
+          await approveTx.wait();
+        }
+
+        tx = await router.addLiquidity(
+          tokenA.address,
+          tokenB.address,
+          amountADesired,
+          amountBDesired,
+          amountAMin,
+          amountBMin,
+          address,
+          deadline
+        );
+      }
       
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await tx.wait();
       
       setAmountA("");
       setAmountB("");
       
       toast({
-        title: "Liquidity added",
+        title: "Liquidity added!",
         description: `Successfully added liquidity to ${tokenA.symbol}/${tokenB.symbol} pool`,
       });
     } catch (error: any) {
+      console.error('Add liquidity error:', error);
       toast({
         title: "Failed to add liquidity",
-        description: error.message || "An error occurred",
+        description: error.reason || error.message || "An error occurred",
         variant: "destructive",
       });
     } finally {

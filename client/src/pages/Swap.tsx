@@ -260,41 +260,106 @@ export default function Swap() {
         return;
       }
 
-      // ========== UI ONLY - SMART CONTRACT INTEGRATION REQUIRED ==========
-      // TODO: Replace this stub with actual DEX router contract interaction:
-      // 1. Get router contract instance
-      // 2. Calculate output amount with getAmountsOut
-      // 3. Check user allowance, approve if needed
-      // 4. Execute swapExactTokensForTokens or swapTokensForExactTokens
-      // 5. Wait for transaction confirmation
-      // 6. Invalidate React Query cache to refresh balances
-      // Example:
-      // const router = new Contract(ROUTER_ADDRESS, ROUTER_ABI, signer);
-      // const amountsOut = await router.getAmountsOut(amountIn, [fromToken.address, toToken.address]);
-      // const tx = await router.swapExactTokensForTokens(...);
-      // await tx.wait();
-      // queryClient.invalidateQueries({ queryKey: ['/api/balances'] });
-      // ====================================================================
+      if (!address || !window.ethereum) {
+        throw new Error("Please connect your wallet");
+      }
+
+      const provider = new BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
       
+      const ROUTER_ADDRESS = "0xFb5B0cc9a61E76C5B5c60b52dF092F30B36c547e";
+      const ROUTER_ABI = [
+        "function getAmountsOut(uint amountIn, address[] memory path) public view returns (uint[] memory amounts)",
+        "function swapExactTokensForTokens(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) external returns (uint[] memory amounts)",
+        "function swapExactETHForTokens(uint amountOutMin, address[] calldata path, address to, uint deadline) external payable returns (uint[] memory amounts)",
+        "function swapExactTokensForETH(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) external returns (uint[] memory amounts)"
+      ];
+
+      const router = new Contract(ROUTER_ADDRESS, ROUTER_ABI, signer);
+      const amountIn = parseUnits(fromAmount, fromToken.decimals);
+      
+      // Build path
+      const path = [fromToken.address, toToken.address];
+      
+      // Get expected output
+      const amounts = await router.getAmountsOut(amountIn, path);
+      const amountOutMin = amounts[1] * 95n / 100n; // 5% slippage tolerance
+      
+      // Deadline: 20 minutes from now
+      const deadline = Math.floor(Date.now() / 1000) + 60 * 20;
+
       toast({
         title: "Swap initiated",
         description: `Swapping ${fromAmount} ${fromToken.symbol} for ${toToken.symbol}`,
       });
+
+      // Handle different swap scenarios
+      const isFromNative = fromToken.address === "0x0000000000000000000000000000000000000000";
+      const isToNative = toToken.address === "0x0000000000000000000000000000000000000000";
+
+      let tx;
       
-      // Simulate swap for UI demonstration
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      if (isFromNative) {
+        // Swap native USDC for tokens
+        tx = await router.swapExactETHForTokens(
+          amountOutMin,
+          path,
+          address,
+          deadline,
+          { value: amountIn }
+        );
+      } else if (isToNative) {
+        // Swap tokens for native USDC
+        // First approve router to spend tokens
+        const tokenContract = new Contract(fromToken.address, ERC20_ABI, signer);
+        const allowance = await tokenContract.allowance(address, ROUTER_ADDRESS);
+        
+        if (allowance < amountIn) {
+          const approveTx = await tokenContract.approve(ROUTER_ADDRESS, amountIn);
+          await approveTx.wait();
+        }
+        
+        tx = await router.swapExactTokensForETH(
+          amountIn,
+          amountOutMin,
+          path,
+          address,
+          deadline
+        );
+      } else {
+        // Swap tokens for tokens
+        // First approve router to spend tokens
+        const tokenContract = new Contract(fromToken.address, ERC20_ABI, signer);
+        const allowance = await tokenContract.allowance(address, ROUTER_ADDRESS);
+        
+        if (allowance < amountIn) {
+          const approveTx = await tokenContract.approve(ROUTER_ADDRESS, amountIn);
+          await approveTx.wait();
+        }
+        
+        tx = await router.swapExactTokensForTokens(
+          amountIn,
+          amountOutMin,
+          path,
+          address,
+          deadline
+        );
+      }
+      
+      await tx.wait();
       
       setFromAmount("");
       setToAmount("");
       
       toast({
-        title: "Swap successful (UI only)",
-        description: `Demo: Swapped ${fromAmount} ${fromToken.symbol} for ${toToken.symbol}. Note: No actual blockchain transaction occurred.`,
+        title: "Swap successful!",
+        description: `Successfully swapped ${fromAmount} ${fromToken.symbol} for ${toToken.symbol}`,
       });
     } catch (error: any) {
+      console.error('Swap error:', error);
       toast({
         title: "Swap failed",
-        description: error.message || "Failed to execute swap",
+        description: error.reason || error.message || "Failed to execute swap",
         variant: "destructive",
       });
     } finally {
