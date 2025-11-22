@@ -243,9 +243,6 @@ export default function AddLiquidity() {
                   Balance: {balanceBFormatted}
                 </span>
               )}
-                  Balance: 0.00
-                </span>
-              )}
             </div>
             
             <div className="relative bg-muted rounded-lg p-4">
