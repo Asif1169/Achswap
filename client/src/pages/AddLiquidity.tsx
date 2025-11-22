@@ -131,7 +131,13 @@ export default function AddLiquidity() {
 
   // Auto-calculate amountB based on pool ratio when amountA changes
   useEffect(() => {
-    if (!pairExists || !tokenA || !tokenB || !amountA || parseFloat(amountA) <= 0 || reserveA === 0n || reserveB === 0n) {
+    // Only auto-calculate if pool exists AND has reserves
+    if (!pairExists || !tokenA || !tokenB || !amountA || parseFloat(amountA) <= 0) {
+      return;
+    }
+
+    // If pool exists but has no reserves (all liquidity removed), don't auto-calculate
+    if (reserveA === 0n || reserveB === 0n) {
       return;
     }
 
@@ -272,13 +278,22 @@ export default function AddLiquidity() {
         throw new Error("Please connect your wallet");
       }
 
+      // Validate balances before proceeding
+      const amountADesired = parseUnits(amountA, tokenA.decimals);
+      const amountBDesired = parseUnits(amountB, tokenB.decimals);
+
+      if (balanceA && amountADesired > balanceA.value) {
+        throw new Error(`Insufficient ${tokenA.symbol} balance`);
+      }
+
+      if (balanceB && amountBDesired > balanceB.value) {
+        throw new Error(`Insufficient ${tokenB.symbol} balance`);
+      }
+
       const provider = new BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
 
       const router = new Contract(ROUTER_ADDRESS, ROUTER_ABI, signer);
-
-      const amountADesired = parseUnits(amountA, tokenA.decimals);
-      const amountBDesired = parseUnits(amountB, tokenB.decimals);
 
       // 5% slippage tolerance
       const amountAMin = amountADesired * 95n / 100n;
@@ -535,10 +550,10 @@ export default function AddLiquidity() {
               <Input
                 data-testid="input-token-b-amount"
                 type="number"
-                placeholder={pairExists ? "Calculated from pool ratio" : "0.00"}
+                placeholder={pairExists && reserveA > 0n && reserveB > 0n ? "Calculated from pool ratio" : "0.00"}
                 value={amountB}
-                onChange={(e) => !pairExists && setAmountB(e.target.value)}
-                disabled={pairExists}
+                onChange={(e) => (pairExists && reserveA > 0n && reserveB > 0n ? null : setAmountB(e.target.value))}
+                disabled={pairExists && reserveA > 0n && reserveB > 0n}
                 className="border-0 bg-transparent text-xl md:text-2xl font-semibold h-auto p-0 focus-visible:ring-0 focus-visible:ring-offset-0 disabled:opacity-100 disabled:cursor-not-allowed"
               />
 
@@ -569,7 +584,7 @@ export default function AddLiquidity() {
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Pool Status</span>
                 <span className="font-medium">
-                  {isLoadingPair ? "Checking..." : pairExists ? "Pool Exists" : "New Pool"}
+                  {isLoadingPair ? "Checking..." : pairExists && reserveA > 0n && reserveB > 0n ? "Pool Exists" : pairExists ? "Empty Pool" : "New Pool"}
                 </span>
               </div>
               {pairExists && reserveA > 0n && reserveB > 0n && (
@@ -580,7 +595,7 @@ export default function AddLiquidity() {
                   </span>
                 </div>
               )}
-              {!pairExists && (
+              {(!pairExists || (pairExists && (reserveA === 0n || reserveB === 0n))) && (
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Initial Price</span>
                   <span className="font-medium">
