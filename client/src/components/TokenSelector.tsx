@@ -133,9 +133,12 @@ export function TokenSelector({ open, onClose, onSelect, tokens, onImport }: Tok
 }
 
 function TokenRow({ token, userAddress, onClick }: { token: Token; userAddress?: string; onClick: () => void }) {
+  // Handle native token (USDC on ARC testnet) vs ERC20 tokens
+  const isNativeToken = token.address === "0x0000000000000000000000000000000000000000";
+  
   const { data: balance } = useBalance({
     address: userAddress as `0x${string}` | undefined,
-    token: token.address as `0x${string}`,
+    ...(isNativeToken ? {} : { token: token.address as `0x${string}` }),
   });
 
   const formattedBalance = balance ? formatUnits(balance.value, balance.decimals) : "0.00";

@@ -32,9 +32,9 @@ export function WrapUnwrapModal({
   const { address } = useAccount();
   const { toast } = useToast();
 
+  // USDC is native token, wUSDC is ERC20
   const { data: usdcBalance } = useBalance({
     address: address as `0x${string}` | undefined,
-    token: usdcToken.address as `0x${string}`,
   });
 
   const { data: wusdcBalance } = useBalance({
