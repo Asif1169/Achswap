@@ -24,13 +24,9 @@ export const arcTestnet = defineChain({
   testnet: true,
 });
 
-// IMPORTANT: Before deploying to production, you MUST:
-// 1. Get a WalletConnect Project ID from https://cloud.walletconnect.com
-// 2. Replace the placeholder below with your actual Project ID
-// 3. Add the Project ID as an environment variable for security
 export const config = getDefaultConfig({
   appName: 'Achswap',
-  projectId: import.meta.env.VITE_WALLETCONNECT_PROJECT_ID || 'achswap-dex-ui-demo-12345', // Replace with your WalletConnect Project ID
+  projectId: import.meta.env.VITE_WALLETCONNECT_PROJECT_ID!,
   chains: [arcTestnet],
   ssr: false,
 });
