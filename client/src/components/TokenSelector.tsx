@@ -4,10 +4,11 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Search, CheckCircle2, AlertCircle, HelpCircle } from "lucide-react";
+import { Search, CheckCircle2, AlertCircle, HelpCircle, X } from "lucide-react";
 import { useAccount, useBalance } from "wagmi";
 import { formatUnits, isAddress } from "ethers";
 import type { Token } from "@shared/schema";
+import { formatAmount } from "@/lib/decimal-utils";
 
 interface TokenSelectorProps {
   open: boolean;
@@ -64,9 +65,17 @@ export function TokenSelector({ open, onClose, onSelect, tokens, onImport }: Tok
 
   return (
     <Dialog open={open} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle className="text-xl font-semibold">Select a token</DialogTitle>
+      <DialogContent className="max-w-md max-h-[90vh] sm:max-h-[85vh] flex flex-col p-4 sm:p-6" hideDefaultClose>
+        <DialogHeader className="relative flex-shrink-0">
+          <DialogTitle className="text-lg sm:text-xl font-semibold pr-8">Select a token</DialogTitle>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute right-0 top-0 h-8 w-8 hover:bg-accent"
+            onClick={onClose}
+          >
+            <X className="h-4 w-4" />
+          </Button>
         </DialogHeader>
         
         <div className="relative">
@@ -88,13 +97,13 @@ export function TokenSelector({ open, onClose, onSelect, tokens, onImport }: Tok
         )}
 
         {showImportButton && (
-          <div className="border border-warning/20 bg-warning/5 rounded-md p-4">
+          <div className="border border-warning/20 bg-warning/5 rounded-md p-3 sm:p-4 flex-shrink-0">
             <div className="flex items-start gap-2 mb-3">
-              <AlertCircle className="h-5 w-5 text-warning mt-0.5" />
+              <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5 text-warning mt-0.5 flex-shrink-0" />
               <div>
-                <p className="font-medium text-sm">Import token</p>
+                <p className="font-medium text-xs sm:text-sm">Import token</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  This token doesn't appear in the active token list. Make sure this is the token you want to trade.
+                  This token doesn't appear in the active token list.
                 </p>
               </div>
             </div>
@@ -102,14 +111,14 @@ export function TokenSelector({ open, onClose, onSelect, tokens, onImport }: Tok
               data-testid="button-import-token"
               onClick={handleImport} 
               disabled={isImporting}
-              className="w-full"
+              className="w-full text-sm"
             >
               {isImporting ? "Importing..." : "Import Token"}
             </Button>
           </div>
         )}
 
-        <ScrollArea className="h-[400px] -mx-6 px-6">
+        <ScrollArea className="flex-1 -mx-4 sm:-mx-6 px-4 sm:px-6 min-h-0">
           <div className="space-y-1">
             {filteredTokens.length === 0 && !showImportButton ? (
               <div className="text-center py-12 text-muted-foreground">
@@ -141,47 +150,50 @@ function TokenRow({ token, userAddress, onClick }: { token: Token; userAddress?:
     ...(isNativeToken ? {} : { token: token.address as `0x${string}` }),
   });
 
-  let displayBalance = "0.00";
+  let displayBalance = "0";
   try {
     if (balance) {
-      const formattedBalance = formatUnits(balance.value, balance.decimals);
-      const numBalance = parseFloat(formattedBalance);
-      if (!isNaN(numBalance) && isFinite(numBalance)) {
-        displayBalance = numBalance.toFixed(6);
-      }
+      displayBalance = formatAmount(balance.value, balance.decimals);
     }
   } catch (error) {
     console.error('Error formatting balance for', token.symbol, error);
-    displayBalance = "0.00";
+    displayBalance = "0";
   }
+
+  const [imgError, setImgError] = useState(false);
 
   return (
     <button
       data-testid={`button-select-token-${token.symbol}`}
       onClick={onClick}
-      className="w-full flex items-center justify-between p-3 rounded-md hover-elevate active-elevate-2 text-left"
+      className="w-full flex items-center justify-between p-2.5 sm:p-3 rounded-md hover-elevate active-elevate-2 text-left"
     >
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center overflow-hidden flex-shrink-0">
-          {token.logoURI ? (
-            <img src={token.logoURI} alt={token.symbol} className="w-full h-full object-cover" />
+      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+        <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-muted flex items-center justify-center overflow-hidden flex-shrink-0">
+          {token.logoURI && !imgError ? (
+            <img 
+              src={token.logoURI} 
+              alt={token.symbol} 
+              className="w-full h-full object-cover"
+              onError={() => setImgError(true)}
+            />
           ) : (
-            <HelpCircle className="h-5 w-5 text-muted-foreground" />
+            <HelpCircle className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
           )}
         </div>
-        <div>
+        <div className="min-w-0">
           <div className="flex items-center gap-1.5">
-            <span className="font-semibold text-base">{token.symbol}</span>
+            <span className="font-semibold text-sm sm:text-base truncate">{token.symbol}</span>
             {token.verified && (
-              <CheckCircle2 className="h-4 w-4 text-verified" data-testid={`icon-verified-${token.symbol}`} />
+              <CheckCircle2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-verified flex-shrink-0" data-testid={`icon-verified-${token.symbol}`} />
             )}
           </div>
-          <p className="text-sm text-muted-foreground">{token.name}</p>
+          <p className="text-xs sm:text-sm text-muted-foreground truncate">{token.name}</p>
         </div>
       </div>
       {userAddress && (
-        <div className="text-right">
-          <p className="font-mono text-sm font-medium tabular-nums" data-testid={`text-balance-${token.symbol}`}>
+        <div className="text-right flex-shrink-0 ml-2">
+          <p className="font-mono text-xs sm:text-sm font-medium tabular-nums" data-testid={`text-balance-${token.symbol}`}>
             {displayBalance}
           </p>
         </div>

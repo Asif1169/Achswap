@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowDownUp, Settings, AlertTriangle, ExternalLink } from "lucide-react";
+import { ArrowDownUp, Settings, AlertTriangle, ExternalLink, HelpCircle } from "lucide-react";
 import { TokenSelector } from "@/components/TokenSelector";
 import { SwapSettings } from "@/components/SwapSettings";
 import { useAccount, useBalance } from "wagmi";
@@ -97,7 +97,8 @@ export default function Swap() {
         const isToNative = toToken.address === "0x0000000000000000000000000000000000000000";
 
         // Get wUSDC address for routing
-        const wusdcAddress = tokens.find(t => t.symbol === 'wUSDC')?.address;
+        const wusdcTokenData = tokens.find(t => t.symbol === 'wUSDC');
+        const wusdcAddress = wusdcTokenData?.address;
 
         if (!wusdcAddress) {
           throw new Error("wUSDC token not found");
@@ -144,7 +145,7 @@ export default function Swap() {
         // For different decimals, normalize before comparing
         const fromAmountNum = parseFloat(fromAmount);
         const outputAmountNum = parseFloat(outputAmount);
-        
+
         if (fromAmountNum > 0 && outputAmountNum > 0) {
           // Price impact = abs((input - output) / input) * 100
           // This works regardless of token pair as it compares normalized values
@@ -163,15 +164,26 @@ export default function Swap() {
     };
 
     fetchQuote();
-  }, [fromAmount, fromToken, toToken]);
+  }, [fromAmount, fromToken, toToken, tokens]); // Include tokens in dependency array
 
   const loadTokens = async () => {
     try {
       // Load imported tokens from localStorage
       const imported = localStorage.getItem('importedTokens');
-      const importedTokens = imported ? JSON.parse(imported) : [];
+      const importedTokens: Token[] = imported ? JSON.parse(imported) : [];
 
-      setTokens([...defaultTokens, ...importedTokens]);
+      // Add a default logoURI for missing logos, fallback to '?' if not available
+      const processedTokens = defaultTokens.map(token => ({
+        ...token,
+        logoURI: token.logoURI || `https://via.placeholder.com/24/FFFFFF/000000?text=?` // Fallback logo
+      }));
+
+      const processedImportedTokens = importedTokens.map(token => ({
+        ...token,
+        logoURI: token.logoURI || `https://via.placeholder.com/24/FFFFFF/000000?text=?` // Fallback logo
+      }));
+
+      setTokens([...processedTokens, ...processedImportedTokens]);
     } catch (error) {
       console.error('Failed to load tokens:', error);
     }
@@ -211,7 +223,7 @@ export default function Swap() {
         name,
         symbol,
         decimals: Number(decimals),
-        logoURI: "",
+        logoURI: `https://via.placeholder.com/24/FFFFFF/000000?text=?`, // Fallback logo
         verified: false,
       };
 
@@ -223,7 +235,7 @@ export default function Swap() {
 
       // Save to localStorage
       const imported = localStorage.getItem('importedTokens');
-      const importedTokens = imported ? JSON.parse(imported) : [];
+      const importedTokens: Token[] = imported ? JSON.parse(imported) : [];
 
       // Check if already imported
       const alreadyImported = importedTokens.find((t: Token) => t.address.toLowerCase() === address.toLowerCase());
@@ -513,10 +525,10 @@ export default function Swap() {
         if (allowance < amountIn) {
           const approveTx = await tokenContract.approve(ROUTER_ADDRESS, amountIn);
           const approveReceipt = await approveTx.wait();
-          
+
           // Refetch balances after approval
           await Promise.all([refetchFromBalance(), refetchToBalance()]);
-          
+
           toast({
             title: "Approval successful",
             description: (
@@ -551,10 +563,10 @@ export default function Swap() {
         if (allowance < amountIn) {
           const approveTx = await tokenContract.approve(ROUTER_ADDRESS, amountIn);
           const approveReceipt = await approveTx.wait();
-          
+
           // Refetch balances after approval
           await Promise.all([refetchFromBalance(), refetchToBalance()]);
-          
+
           toast({
             title: "Approval successful",
             description: (
@@ -634,26 +646,20 @@ export default function Swap() {
 
   let fromBalanceFormatted = "0.00";
   let toBalanceFormatted = "0.00";
-  
+
   try {
     if (fromBalance) {
-      const formatted = formatUnits(fromBalance.value, fromBalance.decimals);
-      const num = parseFloat(formatted);
-      if (!isNaN(num) && isFinite(num)) {
-        fromBalanceFormatted = num.toFixed(6);
-      }
+      const formatted = formatAmount(fromBalance.value, fromBalance.decimals);
+      fromBalanceFormatted = formatted;
     }
   } catch (error) {
     console.error('Error formatting fromBalance', error);
   }
-  
+
   try {
     if (toBalance) {
-      const formatted = formatUnits(toBalance.value, toBalance.decimals);
-      const num = parseFloat(formatted);
-      if (!isNaN(num) && isFinite(num)) {
-        toBalanceFormatted = num.toFixed(6);
-      }
+      const formatted = formatAmount(toBalance.value, toBalance.decimals);
+      toBalanceFormatted = formatted;
     }
   } catch (error) {
     console.error('Error formatting toBalance', error);
@@ -721,11 +727,12 @@ export default function Swap() {
                           className="w-6 h-6 rounded-full group-hover:scale-110 transition-transform duration-300" 
                           onError={(e) => {
                             console.error('Failed to load token logo:', fromToken.logoURI);
-                            e.currentTarget.style.display = 'none';
+                            e.currentTarget.style.display = 'none'; // Hide broken image
+                            // Optionally display a fallback character/icon here
                           }}
                         />
                       ) : (
-                        <div className="w-6 h-6 rounded-full bg-background" />
+                        <div className="w-6 h-6 rounded-full bg-background flex items-center justify-center text-xs text-muted-foreground">?</div>
                       )}
                       <span className="font-semibold text-sm md:text-base">{fromToken.symbol}</span>
                     </div>
@@ -787,11 +794,12 @@ export default function Swap() {
                           className="w-6 h-6 rounded-full" 
                           onError={(e) => {
                             console.error('Failed to load token logo:', toToken.logoURI);
-                            e.currentTarget.style.display = 'none';
+                            e.currentTarget.style.display = 'none'; // Hide broken image
+                            // Optionally display a fallback character/icon here
                           }}
                         />
                       ) : (
-                        <div className="w-6 h-6 rounded-full bg-background" />
+                        <div className="w-6 h-6 rounded-full bg-background flex items-center justify-center text-xs text-muted-foreground">?</div>
                       )}
                       <span className="font-semibold text-sm md:text-base">{toToken.symbol}</span>
                     </div>

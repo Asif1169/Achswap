@@ -6,19 +6,33 @@ import { formatUnits, parseUnits } from "ethers";
  */
 export function formatAmount(value: string | number | bigint, decimals: number): string {
   try {
+    if (value === undefined || value === null) {
+      return "0";
+    }
+
     if (typeof value === "bigint") {
+      if (value === 0n) return "0";
       const formatted = formatUnits(value, decimals);
       const num = parseFloat(formatted);
       if (!isNaN(num) && isFinite(num)) {
+        // For very small numbers, use scientific notation
+        if (num > 0 && num < 0.000001) {
+          return num.toExponential(2);
+        }
         // For display, show up to 6 decimal places but remove trailing zeros
-        return num === 0 ? "0" : parseFloat(num.toFixed(6)).toString();
+        return parseFloat(num.toFixed(6)).toString();
       }
       return "0";
     }
     
     const num = parseFloat(String(value));
     if (!isNaN(num) && isFinite(num)) {
-      return num === 0 ? "0" : parseFloat(num.toFixed(6)).toString();
+      if (num === 0) return "0";
+      // For very small numbers, use scientific notation
+      if (num > 0 && num < 0.000001) {
+        return num.toExponential(2);
+      }
+      return parseFloat(num.toFixed(6)).toString();
     }
     return "0";
   } catch (error) {
@@ -32,17 +46,32 @@ export function formatAmount(value: string | number | bigint, decimals: number):
  */
 export function parseAmount(value: string | number, decimals: number): bigint {
   try {
-    if (!value || value === "" || value === "0") {
+    if (!value || value === "" || value === "0" || value === ".") {
       return 0n;
     }
 
     const str = String(value).trim();
+    
+    // Validate input format
     if (!/^[0-9]*\.?[0-9]*$/.test(str)) {
+      console.warn("Invalid amount format:", str);
+      return 0n;
+    }
+
+    // Handle edge case of just a decimal point
+    if (str === ".") {
+      return 0n;
+    }
+
+    // Ensure decimals is valid
+    if (!Number.isInteger(decimals) || decimals < 0 || decimals > 77) {
+      console.error("Invalid decimals value:", decimals);
       return 0n;
     }
 
     // parseUnits handles the conversion properly
-    return parseUnits(str, decimals);
+    const result = parseUnits(str, decimals);
+    return result;
   } catch (error) {
     console.error("Error parsing amount:", error, { value, decimals });
     return 0n;
