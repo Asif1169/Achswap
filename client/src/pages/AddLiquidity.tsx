@@ -279,8 +279,8 @@ export default function AddLiquidity() {
       }
 
       // Validate balances before proceeding
-      const amountADesired = parseUnits(amountA, tokenA.decimals);
-      const amountBDesired = parseUnits(amountB, tokenB.decimals);
+      const amountADesired = parseAmount(amountA, tokenA.decimals);
+      const amountBDesired = parseAmount(amountB, tokenB.decimals);
 
       if (balanceA && amountADesired > balanceA.value) {
         throw new Error(`Insufficient ${tokenA.symbol} balance`);
@@ -295,9 +295,19 @@ export default function AddLiquidity() {
 
       const router = new Contract(ROUTER_ADDRESS, ROUTER_ABI, signer);
 
-      // 5% slippage tolerance
-      const amountAMin = amountADesired * 95n / 100n;
-      const amountBMin = amountBDesired * 95n / 100n;
+      // For new pools, use 0 minimum amounts. For existing pools, use 5% slippage tolerance
+      let amountAMin: bigint;
+      let amountBMin: bigint;
+      
+      if (!pairExists || reserveA === 0n || reserveB === 0n) {
+        // New pool - no slippage impact, use 0 minimums
+        amountAMin = 0n;
+        amountBMin = 0n;
+      } else {
+        // Existing pool - apply 5% slippage tolerance
+        amountAMin = amountADesired * 95n / 100n;
+        amountBMin = amountBDesired * 95n / 100n;
+      }
 
       // Deadline: 20 minutes from now
       const deadline = Math.floor(Date.now() / 1000) + 60 * 20;
