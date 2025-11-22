@@ -81,7 +81,10 @@ export default function AddLiquidity() {
         const wusdcAddress = wusdcToken?.address;
 
         if (!wusdcAddress) {
+          console.warn('wUSDC token not found in token list');
           setPairExists(false);
+          setReserveA(0n);
+          setReserveB(0n);
           return;
         }
 
@@ -93,13 +96,18 @@ export default function AddLiquidity() {
           ? wusdcAddress
           : tokenB.address;
 
+        console.log('Checking pair:', { tokenAAddress, tokenBAddress, factoryAddress: FACTORY_ADDRESS });
+
         const pairAddress = await factory.getPair(tokenAAddress, tokenBAddress);
+        console.log('Pair lookup result:', pairAddress);
 
         if (pairAddress === "0x0000000000000000000000000000000000000000") {
+          console.log('No existing pair found');
           setPairExists(false);
           setReserveA(0n);
           setReserveB(0n);
         } else {
+          console.log('Pair found at:', pairAddress);
           setPairExists(true);
 
           // Fetch reserves
@@ -107,13 +115,17 @@ export default function AddLiquidity() {
           const [reserve0, reserve1] = await pairContract.getReserves();
           const token0Address = await pairContract.token0();
 
+          console.log('Reserves:', { reserve0: reserve0.toString(), reserve1: reserve1.toString(), token0: token0Address });
+
           // Determine which reserve corresponds to which token
           if (tokenAAddress.toLowerCase() === token0Address.toLowerCase()) {
             setReserveA(reserve0);
             setReserveB(reserve1);
+            console.log('Reserve mapping: reserveA=reserve0, reserveB=reserve1');
           } else {
             setReserveA(reserve1);
             setReserveB(reserve0);
+            console.log('Reserve mapping: reserveA=reserve1, reserveB=reserve0');
           }
         }
       } catch (error) {
@@ -127,7 +139,7 @@ export default function AddLiquidity() {
     };
 
     checkPairExists();
-  }, [tokenA, tokenB, tokens]);
+  }, [tokenA, tokenB, tokens, address]);
 
   // Auto-calculate amountB based on pool ratio when amountA changes
   useEffect(() => {
@@ -600,31 +612,68 @@ export default function AddLiquidity() {
           </div>
 
           {tokenA && tokenB && (
-            <div className="bg-muted/50 rounded-xl p-4 space-y-2 border border-border/40">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Pool Status</span>
-                <span className="font-medium">
-                  {isLoadingPair ? "Checking..." : pairExists && reserveA > 0n && reserveB > 0n ? "Pool Exists" : pairExists ? "Empty Pool" : "New Pool"}
-                </span>
+            <div className="space-y-3">
+              {/* Pool Status Card */}
+              <div className="bg-primary/5 border border-primary/30 rounded-xl p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-muted-foreground">Pool Information</span>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-sm font-semibold px-2.5 py-1 rounded-full ${
+                      isLoadingPair 
+                        ? 'bg-muted text-muted-foreground' 
+                        : pairExists && reserveA > 0n && reserveB > 0n 
+                          ? 'bg-green-500/20 text-green-400' 
+                          : pairExists ? 'bg-yellow-500/20 text-yellow-400' 
+                          : 'bg-blue-500/20 text-blue-400'
+                    }`}>
+                      {isLoadingPair ? "Checking..." : pairExists && reserveA > 0n && reserveB > 0n ? "Existing" : pairExists ? "Empty" : "New"}
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => {
+                        setIsLoadingPair(true);
+                        setTimeout(() => {
+                          // Trigger check by causing a state update
+                          setTokenA(tokenA);
+                        }, 100);
+                      }}
+                      disabled={isLoadingPair}
+                      className="h-7 px-2 text-xs"
+                      data-testid="button-refresh-pool"
+                    >
+                      Refresh
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Current Pool Ratio */}
+                {pairExists && reserveA > 0n && reserveB > 0n && (
+                  <div className="pt-2 border-t border-primary/20 space-y-1.5">
+                    <p className="text-xs text-muted-foreground">Current Pool Ratio:</p>
+                    <p className="text-base font-semibold text-foreground">
+                      1 {tokenA.symbol} = {calculateRatio(reserveB, tokenB.decimals, reserveA, tokenA.decimals)} {tokenB.symbol}
+                    </p>
+                    <p className="text-xs text-muted-foreground">Your deposit must match this ratio</p>
+                  </div>
+                )}
+
+                {/* Initial Ratio For New Pool */}
+                {(!pairExists || (pairExists && (reserveA === 0n || reserveB === 0n))) && (
+                  <div className="pt-2 border-t border-primary/20 space-y-1.5">
+                    <p className="text-xs text-muted-foreground">
+                      {pairExists ? "Pool exists but is empty. Set initial ratio:" : "New Pool - Set initial ratio:"}
+                    </p>
+                    {amountA && amountB && parseFloat(amountA) > 0 && parseFloat(amountB) > 0 ? (
+                      <p className="text-base font-semibold text-foreground">
+                        1 {tokenA.symbol} = {(parseFloat(amountB) / parseFloat(amountA)).toFixed(6)} {tokenB.symbol}
+                      </p>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">Enter amounts to see ratio</p>
+                    )}
+                  </div>
+                )}
               </div>
-              {pairExists && reserveA > 0n && reserveB > 0n && (
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Current Price</span>
-                  <span className="font-medium">
-                    1 {tokenA.symbol} = {calculateRatio(reserveB, tokenB.decimals, reserveA, tokenA.decimals)} {tokenB.symbol}
-                  </span>
-                </div>
-              )}
-              {(!pairExists || (pairExists && (reserveA === 0n || reserveB === 0n))) && (
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Initial Price</span>
-                  <span className="font-medium">
-                    {amountA && amountB && parseFloat(amountA) > 0 && parseFloat(amountB) > 0
-                      ? `1 ${tokenA.symbol} = ${(parseFloat(amountB) / parseFloat(amountA)).toFixed(6)} ${tokenB.symbol}`
-                      : "Set by initial deposit"}
-                  </span>
-                </div>
-              )}
             </div>
           )}
 
