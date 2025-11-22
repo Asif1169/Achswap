@@ -17,15 +17,15 @@ export function Header() {
           </Link>
 
           <nav className="hidden md:flex items-center gap-1">
-            <Link href="/" data-testid="link-swap" className="px-4 py-2 text-sm font-medium hover:bg-accent/80 hover:text-accent-foreground rounded-lg transition-all duration-300 hover:scale-105 relative group">
+            <Link href="/" data-testid="link-swap" className="px-4 py-2 text-sm font-medium text-foreground hover:bg-accent/80 hover:text-accent-foreground rounded-lg transition-all duration-300 hover:scale-105 relative group">
               <span className="relative z-10">Swap</span>
               <span className="absolute inset-0 bg-primary/10 rounded-lg scale-0 group-hover:scale-100 transition-transform duration-300"></span>
             </Link>
-            <Link href="/add-liquidity" data-testid="link-add-liquidity" className="px-4 py-2 text-sm font-medium hover:bg-accent/80 hover:text-accent-foreground rounded-lg transition-all duration-300 hover:scale-105 relative group">
+            <Link href="/add-liquidity" data-testid="link-add-liquidity" className="px-4 py-2 text-sm font-medium text-foreground hover:bg-accent/80 hover:text-accent-foreground rounded-lg transition-all duration-300 hover:scale-105 relative group">
               <span className="relative z-10">Liquidity</span>
               <span className="absolute inset-0 bg-primary/10 rounded-lg scale-0 group-hover:scale-100 transition-transform duration-300"></span>
             </Link>
-            <Link href="/remove-liquidity" data-testid="link-remove-liquidity" className="px-4 py-2 text-sm font-medium hover:bg-accent/80 hover:text-accent-foreground rounded-lg transition-all duration-300 hover:scale-105 relative group">
+            <Link href="/remove-liquidity" data-testid="link-remove-liquidity" className="px-4 py-2 text-sm font-medium text-foreground hover:bg-accent/80 hover:text-accent-foreground rounded-lg transition-all duration-300 hover:scale-105 relative group">
               <span className="relative z-10">Remove</span>
               <span className="absolute inset-0 bg-primary/10 rounded-lg scale-0 group-hover:scale-100 transition-transform duration-300"></span>
             </Link>
@@ -49,14 +49,14 @@ export function Header() {
       </div>
 
       <nav className="md:hidden border-t border-border/40 bg-background/50">
-        <div className="container px-4 py-2 flex items-center gap-1 overflow-x-auto max-w-7xl mx-auto">
-          <Link href="/" data-testid="link-swap-mobile" className="px-3 py-2 text-xs font-medium hover:bg-accent hover:text-accent-foreground rounded-lg transition-colors whitespace-nowrap">
+        <div className="container px-4 py-2 flex items-center justify-center gap-1 overflow-x-auto max-w-7xl mx-auto">
+          <Link href="/" data-testid="link-swap-mobile" className="px-3 py-2 text-xs font-medium text-foreground hover:bg-accent hover:text-accent-foreground rounded-lg transition-colors whitespace-nowrap">
             Swap
           </Link>
-          <Link href="/add-liquidity" data-testid="link-add-liquidity-mobile" className="px-3 py-2 text-xs font-medium hover:bg-accent hover:text-accent-foreground rounded-lg transition-colors whitespace-nowrap">
+          <Link href="/add-liquidity" data-testid="link-add-liquidity-mobile" className="px-3 py-2 text-xs font-medium text-foreground hover:bg-accent hover:text-accent-foreground rounded-lg transition-colors whitespace-nowrap">
             Add Liquidity
           </Link>
-          <Link href="/remove-liquidity" data-testid="link-remove-liquidity-mobile" className="px-3 py-2 text-xs font-medium hover:bg-accent hover:text-accent-foreground rounded-lg transition-colors whitespace-nowrap">
+          <Link href="/remove-liquidity" data-testid="link-remove-liquidity-mobile" className="px-3 py-2 text-xs font-medium text-foreground hover:bg-accent hover:text-accent-foreground rounded-lg transition-colors whitespace-nowrap">
             Remove
           </Link>
         </div>

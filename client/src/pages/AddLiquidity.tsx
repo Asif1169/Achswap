@@ -143,7 +143,16 @@ export default function AddLiquidity() {
 
     try {
       const amountABigInt = parseAmount(amountA, tokenA.decimals);
-      const amountBBigInt = (amountABigInt * reserveB) / reserveA;
+      // Proper ratio calculation handling different decimals:
+      // ratio = reserveB / reserveA (normalized to same decimals)
+      // amountB = amountA * (reserveB / reserveA)
+      
+      // Normalize both reserves to 18 decimals for calculation
+      const reserveANorm = reserveA * (10n ** BigInt(Math.max(0, 18 - tokenA.decimals)));
+      const reserveBNorm = reserveB * (10n ** BigInt(Math.max(0, 18 - tokenB.decimals)));
+      
+      // Calculate: amountB = amountA * reserveB / reserveA (using normalized reserves)
+      const amountBBigInt = (amountABigInt * reserveBNorm) / reserveANorm;
       const calculatedAmountB = formatAmount(amountBBigInt, tokenB.decimals);
       setAmountB(calculatedAmountB);
     } catch (error) {
@@ -456,7 +465,8 @@ export default function AddLiquidity() {
       setAmountA("");
       setAmountB("");
 
-      // Refetch balances after adding liquidity
+      // Wait a moment for blockchain to update, then refetch balances
+      await new Promise(resolve => setTimeout(resolve, 1500));
       await Promise.all([refetchBalanceA(), refetchBalanceB()]);
 
       toast({

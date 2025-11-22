@@ -254,7 +254,7 @@ export default function RemoveLiquidity() {
       const pairContract = new Contract(pairAddress, ERC20_ABI, signer);
 
       // Calculate liquidity to remove based on percentage
-      const totalLiquidity = parseUnits(lpBalance, 18);
+      const totalLiquidity = parseAmount(lpBalance, 18);
       const liquidityToRemove = totalLiquidity * BigInt(percentage[0]) / 100n;
 
       // Approve router to spend LP tokens
@@ -322,7 +322,9 @@ export default function RemoveLiquidity() {
       });
 
       setPercentage([25]);
-      fetchPairInfo(); // Refresh LP balance
+      // Refetch pair info to update LP balance
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      fetchPairInfo();
     } catch (error: any) {
       console.error('Remove liquidity error:', error);
       toast({
