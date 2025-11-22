@@ -38,7 +38,7 @@ export default function Swap() {
   const [showWrapModal, setShowWrapModal] = useState(false);
   const [tokens, setTokens] = useState<Token[]>([]);
   const [isSwapping, setIsSwapping] = useState(false);
-  
+
   const { address, isConnected } = useAccount();
   const { toast } = useToast();
 
@@ -51,11 +51,11 @@ export default function Swap() {
     try {
       const response = await fetch('/api/tokens');
       const defaultTokens = await response.json();
-      
+
       // Load imported tokens from localStorage
       const imported = localStorage.getItem('importedTokens');
       const importedTokens = imported ? JSON.parse(imported) : [];
-      
+
       setTokens([...defaultTokens, ...importedTokens]);
     } catch (error) {
       console.error('Failed to load tokens:', error);
@@ -73,10 +73,10 @@ export default function Swap() {
       if (!window.ethereum) {
         throw new Error("Please connect your wallet to import tokens");
       }
-      
+
       const provider = new BrowserProvider(window.ethereum);
       const contract = new Contract(address, ERC20_ABI, provider);
-      
+
       // Fetch token metadata with timeout
       const timeout = new Promise((_, reject) => 
         setTimeout(() => reject(new Error("Request timed out")), 10000)
@@ -109,17 +109,17 @@ export default function Swap() {
       // Save to localStorage
       const imported = localStorage.getItem('importedTokens');
       const importedTokens = imported ? JSON.parse(imported) : [];
-      
+
       // Check if already imported
       const alreadyImported = importedTokens.find((t: Token) => t.address.toLowerCase() === address.toLowerCase());
       if (!alreadyImported) {
-        importedTokens.push(newToken);
+        importedTokens.push( newToken);
         localStorage.setItem('importedTokens', JSON.stringify(importedTokens));
       }
-      
+
       // Update state
       setTokens(prev => [...prev, newToken]);
-      
+
       toast({
         title: "Token imported",
         description: `${symbol} has been added to your token list`,
@@ -129,7 +129,7 @@ export default function Swap() {
     } catch (error: any) {
       console.error('Token import error:', error);
       let errorMessage = "Failed to import token";
-      
+
       if (error.message.includes("timeout")) {
         errorMessage = "Request timed out. Please check the address and try again.";
       } else if (error.message.includes("Invalid")) {
@@ -141,7 +141,7 @@ export default function Swap() {
       } else {
         errorMessage = "Unable to fetch token data. Please verify the address is correct.";
       }
-      
+
       toast({
         title: "Import failed",
         description: errorMessage,
@@ -165,13 +165,13 @@ export default function Swap() {
     try {
       const provider = new BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
-      
+
       const amountBigInt = parseUnits(amount, 18);
-      
+
       // For native USDC, we send it to wUSDC contract's deposit function
       // The wUSDC contract receives native tokens and mints wrapped tokens
       const wusdcContract = new Contract(wusdcToken.address, WUSDC_ABI, signer);
-      
+
       toast({
         title: "Wrapping...",
         description: `Wrapping ${amount} USDC to wUSDC`,
@@ -180,11 +180,11 @@ export default function Swap() {
       // Call deposit with the amount as value (native token transfer)
       const tx = await wusdcContract.deposit({ value: amountBigInt });
       await tx.wait();
-      
+
       setShowWrapModal(false);
       setFromAmount("");
       setToAmount("");
-      
+
       toast({
         title: "Wrap successful!",
         description: `Successfully wrapped ${amount} USDC to wUSDC`,
@@ -205,10 +205,10 @@ export default function Swap() {
     try {
       const provider = new BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
-      
+
       const amountBigInt = parseUnits(amount, 18);
       const wusdcContract = new Contract(wusdcToken.address, WUSDC_ABI, signer);
-      
+
       toast({
         title: "Unwrapping...",
         description: `Unwrapping ${amount} wUSDC to USDC`,
@@ -216,21 +216,21 @@ export default function Swap() {
 
       // Check allowance first
       const allowance = await wusdcContract.allowance(address, wusdcToken.address);
-      
+
       // If allowance is insufficient, approve first
       if (allowance < amountBigInt) {
         const approveTx = await wusdcContract.approve(wusdcToken.address, amountBigInt);
         await approveTx.wait();
       }
-      
+
       // Call withdraw
       const tx = await wusdcContract.withdraw(amountBigInt);
       await tx.wait();
-      
+
       setShowWrapModal(false);
       setFromAmount("");
       setToAmount("");
-      
+
       toast({
         title: "Unwrap successful!",
         description: `Successfully unwrapped ${amount} wUSDC to USDC`,
@@ -247,13 +247,13 @@ export default function Swap() {
 
   const handleSwap = async () => {
     if (!fromToken || !toToken || !fromAmount || parseFloat(fromAmount) <= 0) return;
-    
+
     setIsSwapping(true);
     try {
       // Check if this is a wrap/unwrap operation
       const isWrap = fromToken.symbol === 'USDC' && toToken.symbol === 'wUSDC';
       const isUnwrap = fromToken.symbol === 'wUSDC' && toToken.symbol === 'USDC';
-      
+
       if (isWrap || isUnwrap) {
         setShowWrapModal(true);
         setIsSwapping(false);
@@ -266,7 +266,7 @@ export default function Swap() {
 
       const provider = new BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
-      
+
       const ROUTER_ADDRESS = "0xFb5B0cc9a61E76C5B5c60b52dF092F30B36c547e";
       const ROUTER_ABI = [
         "function getAmountsOut(uint amountIn, address[] memory path) public view returns (uint[] memory amounts)",
@@ -277,14 +277,14 @@ export default function Swap() {
 
       const router = new Contract(ROUTER_ADDRESS, ROUTER_ABI, signer);
       const amountIn = parseUnits(fromAmount, fromToken.decimals);
-      
+
       // Build path
       const path = [fromToken.address, toToken.address];
-      
+
       // Get expected output
       const amounts = await router.getAmountsOut(amountIn, path);
       const amountOutMin = amounts[1] * 95n / 100n; // 5% slippage tolerance
-      
+
       // Deadline: 20 minutes from now
       const deadline = Math.floor(Date.now() / 1000) + 60 * 20;
 
@@ -298,7 +298,7 @@ export default function Swap() {
       const isToNative = toToken.address === "0x0000000000000000000000000000000000000000";
 
       let tx;
-      
+
       if (isFromNative) {
         // Swap native USDC for tokens
         tx = await router.swapExactETHForTokens(
@@ -313,12 +313,12 @@ export default function Swap() {
         // First approve router to spend tokens
         const tokenContract = new Contract(fromToken.address, ERC20_ABI, signer);
         const allowance = await tokenContract.allowance(address, ROUTER_ADDRESS);
-        
+
         if (allowance < amountIn) {
           const approveTx = await tokenContract.approve(ROUTER_ADDRESS, amountIn);
           await approveTx.wait();
         }
-        
+
         tx = await router.swapExactTokensForETH(
           amountIn,
           amountOutMin,
@@ -331,12 +331,12 @@ export default function Swap() {
         // First approve router to spend tokens
         const tokenContract = new Contract(fromToken.address, ERC20_ABI, signer);
         const allowance = await tokenContract.allowance(address, ROUTER_ADDRESS);
-        
+
         if (allowance < amountIn) {
           const approveTx = await tokenContract.approve(ROUTER_ADDRESS, amountIn);
           await approveTx.wait();
         }
-        
+
         tx = await router.swapExactTokensForTokens(
           amountIn,
           amountOutMin,
@@ -345,12 +345,12 @@ export default function Swap() {
           deadline
         );
       }
-      
+
       await tx.wait();
-      
+
       setFromAmount("");
       setToAmount("");
-      
+
       toast({
         title: "Swap successful!",
         description: `Successfully swapped ${fromAmount} ${fromToken.symbol} for ${toToken.symbol}`,
@@ -404,7 +404,7 @@ export default function Swap() {
           </div>
           <p className="text-xs md:text-sm text-muted-foreground">Trade tokens instantly with the best rates</p>
         </CardHeader>
-        
+
         <CardContent className="space-y-3 md:space-y-4">
           <div className="space-y-2">
             <div className="flex items-center justify-between">
@@ -415,7 +415,7 @@ export default function Swap() {
                 </span>
               )}
             </div>
-            
+
             <div className="relative bg-muted/50 rounded-xl p-4 border border-border/40 hover:border-border/60 transition-colors">
               <Input
                 data-testid="input-from-amount"
@@ -425,7 +425,7 @@ export default function Swap() {
                 onChange={(e) => setFromAmount(e.target.value)}
                 className="border-0 bg-transparent text-xl md:text-2xl font-semibold h-auto p-0 focus-visible:ring-0 focus-visible:ring-offset-0"
               />
-              
+
               <div className="flex items-center justify-between mt-3">
                 <Button
                   data-testid="button-select-from-token"
@@ -436,7 +436,15 @@ export default function Swap() {
                   {fromToken ? (
                     <div className="flex items-center gap-2">
                       {fromToken.logoURI ? (
-                        <img src={fromToken.logoURI} alt={fromToken.symbol} className="w-6 h-6 rounded-full" />
+                        <img 
+                          src={fromToken.logoURI} 
+                          alt={fromToken.symbol} 
+                          className="w-6 h-6 rounded-full" 
+                          onError={(e) => {
+                            console.error('Failed to load token logo:', fromToken.logoURI);
+                            e.currentTarget.style.display = 'none';
+                          }}
+                        />
                       ) : (
                         <div className="w-6 h-6 rounded-full bg-background" />
                       )}
@@ -472,7 +480,7 @@ export default function Swap() {
                 </span>
               )}
             </div>
-            
+
             <div className="relative bg-muted/50 rounded-xl p-4 border border-border/40 hover:border-border/60 transition-colors">
               <Input
                 data-testid="input-to-amount"
@@ -483,7 +491,7 @@ export default function Swap() {
                 className="border-0 bg-transparent text-xl md:text-2xl font-semibold h-auto p-0 focus-visible:ring-0 focus-visible:ring-offset-0"
                 disabled
               />
-              
+
               <div className="flex items-center justify-between mt-3">
                 <Button
                   data-testid="button-select-to-token"
@@ -494,7 +502,15 @@ export default function Swap() {
                   {toToken ? (
                     <div className="flex items-center gap-2">
                       {toToken.logoURI ? (
-                        <img src={toToken.logoURI} alt={toToken.symbol} className="w-6 h-6 rounded-full" />
+                        <img 
+                          src={toToken.logoURI} 
+                          alt={toToken.symbol} 
+                          className="w-6 h-6 rounded-full" 
+                          onError={(e) => {
+                            console.error('Failed to load token logo:', toToken.logoURI);
+                            e.currentTarget.style.display = 'none';
+                          }}
+                        />
                       ) : (
                         <div className="w-6 h-6 rounded-full bg-background" />
                       )}

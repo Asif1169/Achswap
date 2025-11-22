@@ -10,7 +10,7 @@ export function Header() {
       <div className="container flex h-16 items-center justify-between px-4 md:px-6 max-w-7xl mx-auto">
         <div className="flex items-center gap-4 md:gap-8">
           <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity px-2 py-1.5 rounded-lg -ml-2">
-            <img src="/img/logos/achswap-logo.png" alt="Achswap" className="h-9 w-9 md:h-10 md:w-10 rounded-lg" />
+            <img src="/img/logos/achswap-logo.png" alt="Achswap" className="h-9 w-9 md:h-10 md:w-10 rounded-lg" onError={(e) => console.error('Failed to load logo:', e)} />
             <span className="text-lg md:text-xl font-bold bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">
               Achswap
             </span>
@@ -31,7 +31,7 @@ export function Header() {
 
         <div className="flex items-center gap-2 md:gap-4">
           <div className="hidden sm:flex items-center gap-2 px-3 py-2 bg-muted/50 rounded-lg border border-border/40">
-            <img src="/img/logos/arc-network.png" alt="ARC Network" className="h-5 w-5 rounded-full" />
+            <img src="/img/logos/arc-network.png" alt="ARC Network" className="h-5 w-5 rounded-full" onError={(e) => console.error('Failed to load network logo:', e)} />
             <span className="text-xs md:text-sm font-medium">ARC Testnet</span>
           </div>
 
