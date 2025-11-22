@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowDownUp, Settings, AlertTriangle } from "lucide-react";
+import { ArrowDownUp, Settings, AlertTriangle, ExternalLink } from "lucide-react";
 import { TokenSelector } from "@/components/TokenSelector";
 import { SwapSettings } from "@/components/SwapSettings";
 import { useAccount, useBalance } from "wagmi";
@@ -47,6 +47,11 @@ export default function Swap() {
 
   const { address, isConnected } = useAccount();
   const { toast } = useToast();
+
+  // Function to open transaction in explorer
+  const openExplorer = (txHash: string) => {
+    window.open(`https://testnet.arcscan.app/tx/${txHash}`, '_blank');
+  };
 
   // Load tokens from JSON and localStorage
   useEffect(() => {
@@ -281,14 +286,29 @@ export default function Swap() {
 
       // Call deposit with the amount as value (native token transfer)
       const tx = await wusdcContract.deposit({ value: amountBigInt });
-      await tx.wait();
+      const receipt = await tx.wait();
+
+      // Refetch balances
+      await Promise.all([refetchFromBalance(), refetchToBalance()]);
 
       setFromAmount("");
       setToAmount("");
 
       toast({
         title: "Wrap successful!",
-        description: `Successfully wrapped ${amount} USDC to wUSDC`,
+        description: (
+          <div className="flex items-center gap-2">
+            <span>Successfully wrapped {amount} USDC to wUSDC</span>
+            <Button 
+              size="sm" 
+              variant="ghost" 
+              className="h-6 px-2"
+              onClick={() => openExplorer(receipt.hash)}
+            >
+              <ExternalLink className="h-3 w-3" />
+            </Button>
+          </div>
+        ),
       });
     } catch (error: any) {
       console.error('Wrap error:', error);
@@ -329,14 +349,29 @@ export default function Swap() {
 
       // Call withdraw
       const tx = await wusdcContract.withdraw(amountBigInt);
-      await tx.wait();
+      const receipt = await tx.wait();
+
+      // Refetch balances
+      await Promise.all([refetchFromBalance(), refetchToBalance()]);
 
       setFromAmount("");
       setToAmount("");
 
       toast({
         title: "Unwrap successful!",
-        description: `Successfully unwrapped ${amount} wUSDC to USDC`,
+        description: (
+          <div className="flex items-center gap-2">
+            <span>Successfully unwrapped {amount} wUSDC to USDC</span>
+            <Button 
+              size="sm" 
+              variant="ghost" 
+              className="h-6 px-2"
+              onClick={() => openExplorer(receipt.hash)}
+            >
+              <ExternalLink className="h-3 w-3" />
+            </Button>
+          </div>
+        ),
       });
     } catch (error: any) {
       console.error('Unwrap error:', error);
@@ -468,7 +503,27 @@ export default function Swap() {
 
         if (allowance < amountIn) {
           const approveTx = await tokenContract.approve(ROUTER_ADDRESS, amountIn);
-          await approveTx.wait();
+          const approveReceipt = await approveTx.wait();
+          
+          // Refetch balances after approval
+          await Promise.all([refetchFromBalance(), refetchToBalance()]);
+          
+          toast({
+            title: "Approval successful",
+            description: (
+              <div className="flex items-center gap-2">
+                <span>Token approval confirmed</span>
+                <Button 
+                  size="sm" 
+                  variant="ghost" 
+                  className="h-6 px-2"
+                  onClick={() => openExplorer(approveReceipt.hash)}
+                >
+                  <ExternalLink className="h-3 w-3" />
+                </Button>
+              </div>
+            ),
+          });
         }
 
         tx = await router.swapExactTokensForETH(
@@ -486,7 +541,27 @@ export default function Swap() {
 
         if (allowance < amountIn) {
           const approveTx = await tokenContract.approve(ROUTER_ADDRESS, amountIn);
-          await approveTx.wait();
+          const approveReceipt = await approveTx.wait();
+          
+          // Refetch balances after approval
+          await Promise.all([refetchFromBalance(), refetchToBalance()]);
+          
+          toast({
+            title: "Approval successful",
+            description: (
+              <div className="flex items-center gap-2">
+                <span>Token approval confirmed</span>
+                <Button 
+                  size="sm" 
+                  variant="ghost" 
+                  className="h-6 px-2"
+                  onClick={() => openExplorer(approveReceipt.hash)}
+                >
+                  <ExternalLink className="h-3 w-3" />
+                </Button>
+              </div>
+            ),
+          });
         }
 
         tx = await router.swapExactTokensForTokens(
@@ -498,14 +573,29 @@ export default function Swap() {
         );
       }
 
-      await tx.wait();
+      const receipt = await tx.wait();
+
+      // Refetch balances after swap
+      await Promise.all([refetchFromBalance(), refetchToBalance()]);
 
       setFromAmount("");
       setToAmount("");
 
       toast({
         title: "Swap successful!",
-        description: `Successfully swapped ${fromAmount} ${fromToken.symbol} for ${toToken.symbol}`,
+        description: (
+          <div className="flex items-center gap-2">
+            <span>Successfully swapped {fromAmount} {fromToken.symbol} for {toToken.symbol}</span>
+            <Button 
+              size="sm" 
+              variant="ghost" 
+              className="h-6 px-2"
+              onClick={() => openExplorer(receipt.hash)}
+            >
+              <ExternalLink className="h-3 w-3" />
+            </Button>
+          </div>
+        ),
       });
     } catch (error: any) {
       console.error('Swap error:', error);
@@ -523,12 +613,12 @@ export default function Swap() {
   const isFromTokenNative = fromToken?.address === "0x0000000000000000000000000000000000000000";
   const isToTokenNative = toToken?.address === "0x0000000000000000000000000000000000000000";
 
-  const { data: fromBalance } = useBalance({
+  const { data: fromBalance, refetch: refetchFromBalance } = useBalance({
     address: address as `0x${string}` | undefined,
     ...(fromToken && !isFromTokenNative ? { token: fromToken.address as `0x${string}` } : {}),
   });
 
-  const { data: toBalance } = useBalance({
+  const { data: toBalance, refetch: refetchToBalance } = useBalance({
     address: address as `0x${string}` | undefined,
     ...(toToken && !isToTokenNative ? { token: toToken.address as `0x${string}` } : {}),
   });

@@ -10,12 +10,12 @@ export const defaultTokens: Token[] = [
     verified: true
   },
   {
-    address: "0x1ddEaa3Ead136a70D6D52c99cFd9e336babcCaC1",
+    address: "0xE484A40C1C7D56012cFa700Ec2E93e5cf0dd29AC",
     name: "Wrapped USDC",
     symbol: "wUSDC",
     decimals: 6,
-    logoURI: "/img/wusdc.jpeg",
-    verified: true
+    logoURI: "/img/logos/wusdc.png",
+    verified: true,
   },
   {
     address: "0x5e4B41F57364177820458F26c96D732585573f89",

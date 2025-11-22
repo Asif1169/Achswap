@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus } from "lucide-react";
+import { Plus, ExternalLink } from "lucide-react";
 import { TokenSelector } from "@/components/TokenSelector";
 import { useAccount, useBalance } from "wagmi";
 import { useToast } from "@/hooks/use-toast";
@@ -31,13 +31,44 @@ export default function AddLiquidity() {
   const [reserveA, setReserveA] = useState<bigint>(0n);
   const [reserveB, setReserveB] = useState<bigint>(0n);
   const [isLoadingPair, setIsLoadingPair] = useState(false);
-  
+
   const { address, isConnected } = useAccount();
   const { toast } = useToast();
+
+  const FACTORY_ADDRESS = "0x99e8437Fe6a63eC79C1c0a13fdE202e19E49a9d7";
+  const ROUTER_ADDRESS = "0xFb5B0cc9a61E76C5B5c60b52dF092F30B36c547e";
+  const ARCscan_EXPLORER_URL = "https://testnet.arcscan.app/tx/";
+
+  const FACTORY_ABI = [
+    "function getPair(address tokenA, address tokenB) external view returns (address pair)"
+  ];
+  const PAIR_ABI = [
+    "function getReserves() external view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast)",
+    "function token0() external view returns (address)",
+    "function token1() external view returns (address)"
+  ];
+  const ROUTER_ABI = [
+    "function addLiquidity(address tokenA, address tokenB, uint amountADesired, uint amountBDesired, uint amountAMin, uint amountBMin, address to, uint deadline) external returns (uint amountA, uint amountB, uint liquidity)",
+    "function addLiquidityETH(address token, uint amountTokenDesired, uint amountTokenMin, uint amountETHMin, address to, uint deadline) external payable returns (uint amountToken, uint amountETH, uint liquidity)"
+  ];
 
   useEffect(() => {
     loadTokens();
   }, []);
+
+  const { refetch: refetchBalanceA } = useBalance({
+    address: address as `0x${string}` | undefined,
+    ...(tokenA && !isTokenANative ? { token: tokenA.address as `0x${string}` } : {}),
+  });
+
+  const { refetch: refetchBalanceB } = useBalance({
+    address: address as `0x${string}` | undefined,
+    ...(tokenB && !isTokenBNative ? { token: tokenB.address as `0x${string}` } : {}),
+  });
+
+  const openExplorer = (txHash: string) => {
+    window.open(`${ARCscan_EXPLORER_URL}${txHash}`, "_blank");
+  };
 
   // Check if pair exists and fetch reserves
   useEffect(() => {
@@ -52,18 +83,8 @@ export default function AddLiquidity() {
       setIsLoadingPair(true);
       try {
         const provider = new BrowserProvider(window.ethereum);
-        const FACTORY_ADDRESS = "0x99e8437Fe6a63eC79C1c0a13fdE202e19E49a9d7";
-        const FACTORY_ABI = [
-          "function getPair(address tokenA, address tokenB) external view returns (address pair)"
-        ];
-        const PAIR_ABI = [
-          "function getReserves() external view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast)",
-          "function token0() external view returns (address)",
-          "function token1() external view returns (address)"
-        ];
-
         const factory = new Contract(FACTORY_ADDRESS, FACTORY_ABI, provider);
-        
+
         // Get wUSDC address
         const wusdcToken = tokens.find(t => t.symbol === 'wUSDC');
         const wusdcAddress = wusdcToken?.address;
@@ -74,11 +95,11 @@ export default function AddLiquidity() {
         }
 
         // Convert native USDC to wUSDC for pool lookup
-        const tokenAAddress = tokenA.address === "0x0000000000000000000000000000000000000000" 
-          ? wusdcAddress 
+        const tokenAAddress = tokenA.address === "0x0000000000000000000000000000000000000000"
+          ? wusdcAddress
           : tokenA.address;
-        const tokenBAddress = tokenB.address === "0x0000000000000000000000000000000000000000" 
-          ? wusdcAddress 
+        const tokenBAddress = tokenB.address === "0x0000000000000000000000000000000000000000"
+          ? wusdcAddress
           : tokenB.address;
 
         const pairAddress = await factory.getPair(tokenAAddress, tokenBAddress);
@@ -89,7 +110,7 @@ export default function AddLiquidity() {
           setReserveB(0n);
         } else {
           setPairExists(true);
-          
+
           // Fetch reserves
           const pairContract = new Contract(pairAddress, PAIR_ABI, provider);
           const [reserve0, reserve1] = await pairContract.getReserves();
@@ -137,7 +158,7 @@ export default function AddLiquidity() {
     try {
       const imported = localStorage.getItem('importedTokens');
       const importedTokens = imported ? JSON.parse(imported) : [];
-      
+
       setTokens([...defaultTokens, ...importedTokens]);
     } catch (error) {
       console.error('Failed to load tokens:', error);
@@ -153,11 +174,11 @@ export default function AddLiquidity() {
       if (!window.ethereum) {
         throw new Error("Please connect your wallet to import tokens");
       }
-      
+
       const provider = new BrowserProvider(window.ethereum);
       const contract = new Contract(address, ERC20_ABI, provider);
-      
-      const timeout = new Promise((_, reject) => 
+
+      const timeout = new Promise((_, reject) =>
         setTimeout(() => reject(new Error("Request timed out")), 10000)
       );
 
@@ -185,16 +206,16 @@ export default function AddLiquidity() {
       }
 
       const imported = localStorage.getItem('importedTokens');
-      const importedTokens = imported ? JSON.parse(imported) : [];
-      
+      const importedTokens = imported ? JSON.JSON.parse(imported) : [];
+
       const alreadyImported = importedTokens.find((t: Token) => t.address.toLowerCase() === address.toLowerCase());
       if (!alreadyImported) {
         importedTokens.push(newToken);
         localStorage.setItem('importedTokens', JSON.stringify(importedTokens));
       }
-      
+
       setTokens(prev => [...prev, newToken]);
-      
+
       toast({
         title: "Token imported",
         description: `${symbol} has been added to your token list`,
@@ -204,7 +225,7 @@ export default function AddLiquidity() {
     } catch (error: any) {
       console.error('Token import error:', error);
       let errorMessage = "Failed to import token";
-      
+
       if (error.message.includes("timeout")) {
         errorMessage = "Request timed out. Please check the address and try again.";
       } else if (error.message.includes("Invalid")) {
@@ -216,7 +237,7 @@ export default function AddLiquidity() {
       } else {
         errorMessage = "Unable to fetch token data. Please verify the address is correct.";
       }
-      
+
       toast({
         title: "Import failed",
         description: errorMessage,
@@ -230,12 +251,12 @@ export default function AddLiquidity() {
   const isTokenANative = tokenA?.address === "0x0000000000000000000000000000000000000000";
   const isTokenBNative = tokenB?.address === "0x0000000000000000000000000000000000000000";
 
-  const { data: balanceA } = useBalance({
+  const { data: balanceA, refetch: refetchBalanceA_hook } = useBalance({
     address: address as `0x${string}` | undefined,
     ...(tokenA && !isTokenANative ? { token: tokenA.address as `0x${string}` } : {}),
   });
 
-  const { data: balanceB } = useBalance({
+  const { data: balanceB, refetch: refetchBalanceB_hook } = useBalance({
     address: address as `0x${string}` | undefined,
     ...(tokenB && !isTokenBNative ? { token: tokenB.address as `0x${string}` } : {}),
   });
@@ -245,7 +266,7 @@ export default function AddLiquidity() {
 
   const handleAddLiquidity = async () => {
     if (!tokenA || !tokenB || !amountA || !amountB || parseFloat(amountA) <= 0 || parseFloat(amountB) <= 0) return;
-    
+
     setIsAdding(true);
     try {
       if (!address || !window.ethereum) {
@@ -254,22 +275,16 @@ export default function AddLiquidity() {
 
       const provider = new BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
-      
-      const ROUTER_ADDRESS = "0xFb5B0cc9a61E76C5B5c60b52dF092F30B36c547e";
-      const ROUTER_ABI = [
-        "function addLiquidity(address tokenA, address tokenB, uint amountADesired, uint amountBDesired, uint amountAMin, uint amountBMin, address to, uint deadline) external returns (uint amountA, uint amountB, uint liquidity)",
-        "function addLiquidityETH(address token, uint amountTokenDesired, uint amountTokenMin, uint amountETHMin, address to, uint deadline) external payable returns (uint amountToken, uint amountETH, uint liquidity)"
-      ];
 
       const router = new Contract(ROUTER_ADDRESS, ROUTER_ABI, signer);
-      
+
       const amountADesired = parseUnits(amountA, tokenA.decimals);
       const amountBDesired = parseUnits(amountB, tokenB.decimals);
-      
+
       // 5% slippage tolerance
       const amountAMin = amountADesired * 95n / 100n;
       const amountBMin = amountBDesired * 95n / 100n;
-      
+
       // Deadline: 20 minutes from now
       const deadline = Math.floor(Date.now() / 1000) + 60 * 20;
 
@@ -277,9 +292,6 @@ export default function AddLiquidity() {
         title: "Adding liquidity",
         description: `Adding ${amountA} ${tokenA.symbol} and ${amountB} ${tokenB.symbol}`,
       });
-
-      const isTokenANative = tokenA.address === "0x0000000000000000000000000000000000000000";
-      const isTokenBNative = tokenB.address === "0x0000000000000000000000000000000000000000";
 
       // Get wUSDC address
       const wusdcToken = tokens.find(t => t.symbol === 'wUSDC');
@@ -308,10 +320,30 @@ export default function AddLiquidity() {
         if (tokenAddress !== wusdcAddress) {
           const tokenContract = new Contract(token.address, ERC20_ABI, signer);
           const allowance = await tokenContract.allowance(address, ROUTER_ADDRESS);
-          
+
           if (allowance < tokenAmount) {
             const approveTx = await tokenContract.approve(ROUTER_ADDRESS, tokenAmount);
-            await approveTx.wait();
+            const approveReceipt = await approveTx.wait();
+
+            // Refetch balances after approval
+            await Promise.all([refetchBalanceA_hook(), refetchBalanceB_hook()]);
+
+            toast({
+              title: "Approval successful",
+              description: (
+                <div className="flex items-center gap-2">
+                  <span>Token approval confirmed</span>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-6 px-2"
+                    onClick={() => openExplorer(approveReceipt.hash)}
+                  >
+                    <ExternalLink className="h-3 w-3" />
+                  </Button>
+                </div>
+              ),
+            });
           }
         }
 
@@ -329,18 +361,58 @@ export default function AddLiquidity() {
         // Approve both tokens
         const tokenAContract = new Contract(tokenAAddress, ERC20_ABI, signer);
         const tokenBContract = new Contract(tokenBAddress, ERC20_ABI, signer);
-        
+
         const allowanceA = await tokenAContract.allowance(address, ROUTER_ADDRESS);
         const allowanceB = await tokenBContract.allowance(address, ROUTER_ADDRESS);
-        
+
         if (allowanceA < amountADesired) {
           const approveTx = await tokenAContract.approve(ROUTER_ADDRESS, amountADesired);
-          await approveTx.wait();
+          const approveReceipt = await approveTx.wait();
+
+          // Refetch balances after approval
+          await Promise.all([refetchBalanceA_hook(), refetchBalanceB_hook()]);
+
+          toast({
+            title: "Approval successful",
+            description: (
+              <div className="flex items-center gap-2">
+                <span>Token approval confirmed</span>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-6 px-2"
+                  onClick={() => openExplorer(approveReceipt.hash)}
+                >
+                  <ExternalLink className="h-3 w-3" />
+                </Button>
+              </div>
+            ),
+          });
         }
-        
+
         if (allowanceB < amountBDesired) {
           const approveTx = await tokenBContract.approve(ROUTER_ADDRESS, amountBDesired);
-          await approveTx.wait();
+          const approveReceipt = await approveTx.wait();
+
+          // Refetch balances after approval
+          await Promise.all([refetchBalanceA_hook(), refetchBalanceB_hook()]);
+
+          toast({
+            title: "Approval successful",
+            description: (
+              <div className="flex items-center gap-2">
+                <span>Token approval confirmed</span>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-6 px-2"
+                  onClick={() => openExplorer(approveReceipt.hash)}
+                >
+                  <ExternalLink className="h-3 w-3" />
+                </Button>
+              </div>
+            ),
+          });
         }
 
         tx = await router.addLiquidity(
@@ -354,15 +426,30 @@ export default function AddLiquidity() {
           deadline
         );
       }
-      
+
       await tx.wait();
-      
+
       setAmountA("");
       setAmountB("");
-      
+
+      // Refetch balances after adding liquidity
+      await Promise.all([refetchBalanceA_hook(), refetchBalanceB_hook()]);
+
       toast({
         title: "Liquidity added!",
-        description: `Successfully added liquidity to ${tokenA.symbol}/${tokenB.symbol} pool`,
+        description: (
+          <div className="flex items-center gap-2">
+            <span>Successfully added liquidity to {tokenA.symbol}/{tokenB.symbol} pool</span>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-6 px-2"
+              onClick={() => openExplorer(tx.hash)}
+            >
+              <ExternalLink className="h-3 w-3" />
+            </Button>
+          </div>
+        ),
       });
     } catch (error: any) {
       console.error('Add liquidity error:', error);
@@ -385,7 +472,7 @@ export default function AddLiquidity() {
             Add liquidity to earn fees on swaps
           </p>
         </CardHeader>
-        
+
         <CardContent className="space-y-3 md:space-y-4">
           <div className="space-y-2">
             <div className="flex items-center justify-between">
@@ -396,7 +483,7 @@ export default function AddLiquidity() {
                 </span>
               )}
             </div>
-            
+
             <div className="relative bg-muted/50 rounded-xl p-4 border border-border/40 hover:border-border/60 transition-colors">
               <Input
                 data-testid="input-token-a-amount"
@@ -406,7 +493,7 @@ export default function AddLiquidity() {
                 onChange={(e) => setAmountA(e.target.value)}
                 className="border-0 bg-transparent text-xl md:text-2xl font-semibold h-auto p-0 focus-visible:ring-0 focus-visible:ring-offset-0"
               />
-              
+
               <Button
                 data-testid="button-select-token-a"
                 onClick={() => setShowTokenASelector(true)}
@@ -444,7 +531,7 @@ export default function AddLiquidity() {
                 </span>
               )}
             </div>
-            
+
             <div className="relative bg-muted/50 rounded-xl p-4 border border-border/40 hover:border-border/60 transition-colors">
               <Input
                 data-testid="input-token-b-amount"
@@ -455,7 +542,7 @@ export default function AddLiquidity() {
                 disabled={pairExists}
                 className="border-0 bg-transparent text-xl md:text-2xl font-semibold h-auto p-0 focus-visible:ring-0 focus-visible:ring-offset-0 disabled:opacity-100 disabled:cursor-not-allowed"
               />
-              
+
               <Button
                 data-testid="button-select-token-b"
                 onClick={() => setShowTokenBSelector(true)}
