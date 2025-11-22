@@ -60,6 +60,42 @@ export default function Swap() {
     loadTokens();
   }, []);
 
+  // Parse URL parameters for default token pair and amount
+  useEffect(() => {
+    if (tokens.length === 0) return;
+
+    const path = window.location.pathname;
+    const params = new URLSearchParams(window.location.search);
+    
+    // Parse path like /usdc+achs or /usdc+0x000000
+    const pathMatch = path.match(/\/([^/+]+)\+([^/+]+)/);
+    
+    if (pathMatch) {
+      const [, fromTokenStr, toTokenStr] = pathMatch;
+      
+      // Find tokens by symbol or address
+      const findToken = (str: string) => {
+        const normalized = str.toLowerCase();
+        return tokens.find(t => 
+          t.symbol.toLowerCase() === normalized || 
+          t.address.toLowerCase() === normalized
+        );
+      };
+      
+      const foundFromToken = findToken(fromTokenStr);
+      const foundToToken = findToken(toTokenStr);
+      
+      if (foundFromToken) setFromToken(foundFromToken);
+      if (foundToToken) setToToken(foundToToken);
+    }
+    
+    // Parse amount parameter
+    const amountParam = params.get('amount');
+    if (amountParam && !isNaN(parseFloat(amountParam))) {
+      setFromAmount(amountParam);
+    }
+  }, [tokens]);
+
   // Fetch quote when fromAmount, fromToken, or toToken changes
   useEffect(() => {
     const fetchQuote = async () => {
@@ -201,12 +237,12 @@ export default function Swap() {
       // Add a default logoURI for missing logos, fallback to '?' if not available
       const processedTokens = defaultTokens.map(token => ({
         ...token,
-        logoURI: token.logoURI || `https://via.placeholder.com/24/FFFFFF/000000?text=?` // Fallback logo
+        logoURI: token.logoURI || `/img/logos/unknown-token.png` // Fallback logo
       }));
 
       const processedImportedTokens = importedTokens.map(token => ({
         ...token,
-        logoURI: token.logoURI || `https://via.placeholder.com/24/FFFFFF/000000?text=?` // Fallback logo
+        logoURI: token.logoURI || `/img/logos/unknown-token.png` // Fallback logo
       }));
 
       setTokens([...processedTokens, ...processedImportedTokens]);
@@ -249,7 +285,7 @@ export default function Swap() {
         name,
         symbol,
         decimals: Number(decimals),
-        logoURI: `https://via.placeholder.com/24/FFFFFF/000000?text=?`, // Fallback logo
+        logoURI: `/img/logos/unknown-token.png`, // Fallback logo
         verified: false,
       };
 

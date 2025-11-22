@@ -178,7 +178,11 @@ function TokenRow({ token, userAddress, onClick }: { token: Token; userAddress?:
               onError={() => setImgError(true)}
             />
           ) : (
-            <div className="w-full h-full rounded-full bg-red-500"></div>
+            <img 
+              src="/img/logos/unknown-token.png" 
+              alt="Unknown token" 
+              className="w-full h-full object-cover"
+            />
           )}
         </div>
         <div className="min-w-0">
