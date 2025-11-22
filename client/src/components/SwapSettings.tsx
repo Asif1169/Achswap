@@ -1,10 +1,10 @@
-
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { X } from "lucide-react"; // Assuming X is imported from lucide-react
 
 interface SwapSettingsProps {
   open: boolean;
@@ -17,6 +17,9 @@ interface SwapSettingsProps {
   onRecipientAddressChange: (value: string) => void;
   quoteRefreshInterval?: number;
   onQuoteRefreshIntervalChange?: (value: number) => void;
+  // Add these props for max balance functionality
+  maxBalance?: number;
+  onMaxBalanceClick?: () => void;
 }
 
 export function SwapSettings({
@@ -30,6 +33,8 @@ export function SwapSettings({
   onRecipientAddressChange,
   quoteRefreshInterval = 30,
   onQuoteRefreshIntervalChange,
+  maxBalance, // Destructure maxBalance
+  onMaxBalanceClick, // Destructure onMaxBalanceClick
 }: SwapSettingsProps) {
   const [customSlippage, setCustomSlippage] = useState(slippage.toString());
   const [customDeadline, setCustomDeadline] = useState(deadline.toString());
@@ -64,9 +69,18 @@ export function SwapSettings({
   return (
     <Dialog open={open} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-md bg-slate-900 border-slate-700">
+        {/* Updated DialogHeader for better close button visibility */}
         <DialogHeader>
           <DialogTitle className="text-white">Swap Settings</DialogTitle>
           <DialogDescription className="text-slate-300">Customize your swap preferences</DialogDescription>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute right-4 top-4 h-8 w-8 hover:bg-slate-700 text-slate-100 hover:text-white"
+            onClick={onClose}
+          >
+            <X className="h-4 w-4" />
+          </Button>
         </DialogHeader>
 
         <div className="space-y-6 mt-4">
@@ -167,6 +181,24 @@ export function SwapSettings({
               Send tokens to a different address after swap.
             </p>
           </div>
+
+          {/* Max Balance Button - Added */}
+          {maxBalance !== undefined && onMaxBalanceClick && (
+            <div className="space-y-3">
+              <Label className="text-sm font-medium text-white">Maximum Available Balance</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="text"
+                  value={maxBalance.toString()} // Display max balance
+                  readOnly
+                  className="bg-slate-800 border-slate-600 text-white placeholder:text-slate-400 flex-grow"
+                />
+                <Button onClick={onMaxBalanceClick} className="bg-blue-600 hover:bg-blue-700 text-white">
+                  MAX
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>

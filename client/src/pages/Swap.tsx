@@ -66,15 +66,15 @@ export default function Swap() {
 
     const params = new URLSearchParams(window.location.search);
     const queryKeys = Array.from(params.keys());
-    
+
     // Find token pair query (e.g., "usdc+achs" or "usdc+0x000000")
     const pairQuery = queryKeys.find(key => key.includes('+'));
-    
+
     if (pairQuery) {
       const parts = pairQuery.split('+');
       if (parts.length === 2) {
         const [fromTokenStr, toTokenStr] = parts;
-        
+
         // Find tokens by symbol or address (case-insensitive)
         const findToken = (str: string) => {
           const normalized = str.toLowerCase().trim();
@@ -83,15 +83,15 @@ export default function Swap() {
             t.address.toLowerCase() === normalized
           );
         };
-        
+
         const foundFromToken = findToken(fromTokenStr);
         const foundToToken = findToken(toTokenStr);
-        
+
         if (foundFromToken && !fromToken) setFromToken(foundFromToken);
         if (foundToToken && !toToken) setToToken(foundToToken);
       }
     }
-    
+
     // Parse amount parameter
     const amountParam = params.get('amount');
     if (amountParam && !isNaN(parseFloat(amountParam)) && parseFloat(amountParam) > 0 && !fromAmount) {
@@ -183,28 +183,28 @@ export default function Swap() {
         // Calculate price impact properly for any decimal combination
         const fromAmountBigInt = parseAmount(fromAmount, fromToken.decimals);
         const outputAmountBigInt = amounts[amounts.length - 1];
-        
+
         // Calculate expected 1:1 value ratio at same precision
         // Price impact = |1 - (actualOutput / expectedOutput)| * 100
         // For tokens with different decimals, normalize to compare actual values
-        
+
         // Get the ratio: how much of toToken we get per 1 fromToken
         const ONE_TOKEN = 10n ** BigInt(fromToken.decimals);
-        
+
         try {
           // Get quote for 1 unit of fromToken
           const oneTokenAmounts = await router.getAmountsOut(ONE_TOKEN, path);
           const oneTokenOutput = oneTokenAmounts[oneTokenAmounts.length - 1];
-          
+
           // Calculate expected output based on linear scaling
           const expectedOutput = (fromAmountBigInt * oneTokenOutput) / ONE_TOKEN;
-          
+
           // Calculate price impact as deviation from linear expectation
           if (expectedOutput > 0n && outputAmountBigInt > 0n) {
             const impactBasisPoints = expectedOutput > outputAmountBigInt
               ? ((expectedOutput - outputAmountBigInt) * 10000n) / expectedOutput
               : ((outputAmountBigInt - expectedOutput) * 10000n) / expectedOutput;
-            
+
             const impact = Number(impactBasisPoints) / 100;
             setPriceImpact(Math.abs(impact));
           } else {
@@ -224,10 +224,10 @@ export default function Swap() {
     };
 
     fetchQuote();
-    
+
     // Set up auto-refresh interval
     const intervalId = setInterval(fetchQuote, quoteRefreshInterval * 1000);
-    
+
     return () => clearInterval(intervalId);
   }, [fromAmount, fromToken, toToken, tokens, quoteRefreshInterval])
 
@@ -833,6 +833,17 @@ export default function Swap() {
                     "Select token"
                   )}
                 </Button>
+                {isConnected && fromToken && fromBalance && (
+                  <Button
+                    data-testid="button-max-from"
+                    onClick={() => setFromAmount(fromBalanceFormatted)}
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 px-3 text-xs font-semibold text-primary hover:text-primary/80 hover:bg-primary/10"
+                  >
+                    MAX
+                  </Button>
+                )}
               </div>
             </div>
           </div>

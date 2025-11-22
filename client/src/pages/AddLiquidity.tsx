@@ -596,25 +596,38 @@ export default function AddLiquidity() {
                 className="border-0 bg-transparent text-xl md:text-2xl font-semibold h-auto p-0 focus-visible:ring-0 focus-visible:ring-offset-0"
               />
 
-              <Button
-                data-testid="button-select-token-a"
-                onClick={() => setShowTokenASelector(true)}
-                variant="secondary"
-                className="mt-3 h-10 px-3 md:px-4 hover:bg-secondary/80"
-              >
-                {tokenA ? (
-                  <div className="flex items-center gap-2">
-                    {tokenA.logoURI ? (
-                      <img src={tokenA.logoURI} alt={tokenA.symbol} className="w-6 h-6 rounded-full" />
-                    ) : (
-                      <div className="w-6 h-6 rounded-full bg-background" />
-                    )}
-                    <span className="font-semibold text-sm md:text-base">{tokenA.symbol}</span>
-                  </div>
-                ) : (
-                  "Select token"
+              <div className="flex items-center justify-between mt-3">
+                <Button
+                  data-testid="button-select-token-a"
+                  onClick={() => setShowTokenASelector(true)}
+                  variant="secondary"
+                  className="h-10 px-3 md:px-4 hover:bg-secondary/80"
+                >
+                  {tokenA ? (
+                    <div className="flex items-center gap-2">
+                      {tokenA.logoURI ? (
+                        <img src={tokenA.logoURI} alt={tokenA.symbol} className="w-6 h-6 rounded-full" />
+                      ) : (
+                        <div className="w-6 h-6 rounded-full bg-background" />
+                      )}
+                      <span className="font-semibold text-sm md:text-base">{tokenA.symbol}</span>
+                    </div>
+                  ) : (
+                    "Select token"
+                  )}
+                </Button>
+                {isConnected && tokenA && balanceA && (
+                  <Button
+                    data-testid="button-max-token-a"
+                    onClick={() => setAmountA(balanceAFormatted)}
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 px-3 text-xs font-semibold text-primary hover:text-primary/80 hover:bg-primary/10"
+                  >
+                    MAX
+                  </Button>
                 )}
-              </Button>
+              </div>
             </div>
           </div>
 
@@ -645,25 +658,38 @@ export default function AddLiquidity() {
                 className="border-0 bg-transparent text-xl md:text-2xl font-semibold h-auto p-0 focus-visible:ring-0 focus-visible:ring-offset-0 disabled:opacity-100 disabled:cursor-not-allowed"
               />
 
-              <Button
-                data-testid="button-select-token-b"
-                onClick={() => setShowTokenBSelector(true)}
-                variant="secondary"
-                className="mt-3 h-10 px-3 md:px-4 hover:bg-secondary/80"
-              >
-                {tokenB ? (
-                  <div className="flex items-center gap-2">
-                    {tokenB.logoURI ? (
-                      <img src={tokenB.logoURI} alt={tokenB.symbol} className="w-6 h-6 rounded-full" />
-                    ) : (
-                      <div className="w-6 h-6 rounded-full bg-background" />
-                    )}
-                    <span className="font-semibold text-sm md:text-base">{tokenB.symbol}</span>
-                  </div>
-                ) : (
-                  "Select token"
+              <div className="flex items-center justify-between mt-3">
+                <Button
+                  data-testid="button-select-token-b"
+                  onClick={() => setShowTokenBSelector(true)}
+                  variant="secondary"
+                  className="h-10 px-3 md:px-4 hover:bg-secondary/80"
+                >
+                  {tokenB ? (
+                    <div className="flex items-center gap-2">
+                      {tokenB.logoURI ? (
+                        <img src={tokenB.logoURI} alt={tokenB.symbol} className="w-6 h-6 rounded-full" />
+                      ) : (
+                        <div className="w-6 h-6 rounded-full bg-background" />
+                      )}
+                      <span className="font-semibold text-sm md:text-base">{tokenB.symbol}</span>
+                    </div>
+                  ) : (
+                    "Select token"
+                  )}
+                </Button>
+                {isConnected && tokenB && balanceB && !(pairExists && reserveA > 0n && reserveB > 0n) && (
+                  <Button
+                    data-testid="button-max-token-b"
+                    onClick={() => setAmountB(balanceBFormatted)}
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 px-3 text-xs font-semibold text-primary hover:text-primary/80 hover:bg-primary/10"
+                  >
+                    MAX
+                  </Button>
                 )}
-              </Button>
+              </div>
             </div>
           </div>
 
