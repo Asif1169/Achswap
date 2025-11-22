@@ -18,7 +18,7 @@ export const defaultTokens: Token[] = [
     verified: true,
   },
   {
-    address: "0x5e4B41F57364177820458F26c96D732585573f89",
+    address: "0x45Bb5425f293bdd209c894364C462421FF5FfA48",
     name: "Achswap Token",
     symbol: "ACHS",
     decimals: 18,
