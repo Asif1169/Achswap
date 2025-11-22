@@ -37,6 +37,7 @@ export default function RemoveLiquidity() {
   const [tokens, setTokens] = useState<Token[]>([]);
   const [pairAddress, setPairAddress] = useState<string | null>(null);
   const [lpBalance, setLpBalance] = useState<string>("0");
+  const [lpBalanceRaw, setLpBalanceRaw] = useState<bigint>(0n); // Store raw bigint value
   const [amountAToReceive, setAmountAToReceive] = useState<string>("0");
   const [amountBToReceive, setAmountBToReceive] = useState<string>("0");
 
@@ -71,13 +72,20 @@ export default function RemoveLiquidity() {
         const totalSupply = await pairContract.totalSupply();
         const token0Address = await pairContract.token0();
 
-        const liquidityToRemove = parseAmount(lpBalance, 18) * BigInt(percentage[0]) / 100n;
+        // Use raw balance value directly (already in wei/18 decimals)
+        const liquidityToRemove = lpBalanceRaw * BigInt(percentage[0]) / 100n;
 
         const amount0 = liquidityToRemove * reserve0 / totalSupply;
         const amount1 = liquidityToRemove * reserve1 / totalSupply;
 
-        // Determine which token is token0
-        const isTokenAToken0 = tokenA.address.toLowerCase() === token0Address.toLowerCase();
+        // Get wUSDC token for proper address handling
+        const wusdcToken = tokens.find(t => t.symbol === 'wUSDC');
+        const wusdcAddress = wusdcToken?.address || '';
+        
+        // Determine which token is token0 - convert native USDC to wUSDC for comparison
+        const tokenAAddress = tokenA.address === "0x0000000000000000000000000000000000000000" ? wusdcAddress : tokenA.address;
+        const tokenBAddress = tokenB.address === "0x0000000000000000000000000000000000000000" ? wusdcAddress : tokenB.address;
+        const isTokenAToken0 = tokenAAddress.toLowerCase() === token0Address.toLowerCase();
 
         if (isTokenAToken0) {
           setAmountAToReceive(formatAmount(amount0, tokenA.decimals));
@@ -94,7 +102,7 @@ export default function RemoveLiquidity() {
     };
 
     calculateAmountsToReceive();
-  }, [pairAddress, tokenA, tokenB, lpBalance, percentage]);
+  }, [pairAddress, tokenA, tokenB, lpBalanceRaw, percentage, tokens]);
 
   const loadTokens = async () => {
     try {
@@ -211,7 +219,8 @@ export default function RemoveLiquidity() {
       // Get LP token balance (LP tokens always use 18 decimals)
       const pairContract = new Contract(pair, ERC20_ABI, provider);
       const balance = await pairContract.balanceOf(address);
-      setLpBalance(formatAmount(balance, 18));
+      setLpBalanceRaw(balance); // Store raw value
+      setLpBalance(formatAmount(balance, 18)); // Store formatted for display
     } catch (error) {
       console.error('Failed to fetch pair info:', error);
       toast({
@@ -243,13 +252,13 @@ export default function RemoveLiquidity() {
       const router = new Contract(ROUTER_ADDRESS, ROUTER_ABI, signer);
       const pairContract = new Contract(pairAddress, ERC20_ABI, signer);
 
-      // Calculate liquidity to remove based on percentage
-      const totalLiquidity = parseAmount(lpBalance, 18);
-      const liquidityToRemove = totalLiquidity * BigInt(percentage[0]) / 100n;
+      // Calculate liquidity to remove based on percentage (use raw balance value)
+      const liquidityToRemove = lpBalanceRaw * BigInt(percentage[0]) / 100n;
 
       // Approve router to spend LP tokens
       const allowance = await pairContract.allowance(address, ROUTER_ADDRESS);
       if (allowance < liquidityToRemove) {
+        console.log('Approving router to spend LP tokens:', { liquidityToRemove: liquidityToRemove.toString(), allowance: allowance.toString() });
         const approveTx = await pairContract.approve(ROUTER_ADDRESS, liquidityToRemove);
         await approveTx.wait();
       }
@@ -257,8 +266,8 @@ export default function RemoveLiquidity() {
       // Deadline: 20 minutes from now
       const deadline = Math.floor(Date.now() / 1000) + 60 * 20;
 
-      // Minimum amounts with 5% slippage
-      const amountAMin = 0n; // In production, calculate this properly
+      // Minimum amounts: 0 for safety (user accepts any slippage)
+      const amountAMin = 0n;
       const amountBMin = 0n;
 
       toast({
@@ -269,14 +278,31 @@ export default function RemoveLiquidity() {
       const isTokenANative = tokenA.address === "0x0000000000000000000000000000000000000000";
       const isTokenBNative = tokenB.address === "0x0000000000000000000000000000000000000000";
 
-      // Use actual token addresses (pools use ERC20 tokens directly)
-      const tokenAAddress = tokenA.address;
-      const tokenBAddress = tokenB.address;
+      // Get wUSDC address and convert native USDC to wUSDC for router calls
+      const wusdcToken = tokens.find(t => t.symbol === 'wUSDC');
+      const wusdcAddress = wusdcToken?.address;
+      
+      if (!wusdcAddress) {
+        throw new Error("wUSDC token not found");
+      }
+
+      // Use wUSDC addresses for router calls since pools use wUSDC
+      const tokenAAddress = isTokenANative ? wusdcAddress : tokenA.address;
+      const tokenBAddress = isTokenBNative ? wusdcAddress : tokenB.address;
+
+      console.log('Remove liquidity params:', { 
+        liquidityToRemove: liquidityToRemove.toString(),
+        tokenAAddress, 
+        tokenBAddress,
+        isTokenANative,
+        isTokenBNative
+      });
 
       let tx;
 
       if (isTokenANative || isTokenBNative) {
         const token = isTokenANative ? tokenBAddress : tokenAAddress;
+        console.log('Calling removeLiquidityETH with:', { token, liquidity: liquidityToRemove.toString() });
         tx = await router.removeLiquidityETH(
           token,
           liquidityToRemove,
@@ -286,6 +312,7 @@ export default function RemoveLiquidity() {
           deadline
         );
       } else {
+        console.log('Calling removeLiquidity with:', { tokenAAddress, tokenBAddress, liquidity: liquidityToRemove.toString() });
         tx = await router.removeLiquidity(
           tokenAAddress,
           tokenBAddress,
