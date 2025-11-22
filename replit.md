@@ -40,10 +40,9 @@ Achswap is a modern decentralized exchange (DEX) built on the ARC Testnet. It pr
   - `wagmi.ts`: Wagmi and RainbowKit configuration for ARC Testnet
   - `queryClient.ts`: React Query setup for data fetching
 
-### Backend (`server/`)
-- **Token List**: `server/data/tokens.json` - Default token list with verified tokens
-- **API Routes**: 
-  - `GET /api/tokens` - Returns the token list
+### Data (`client/src/data/`)
+- **Token List**: `tokens.ts` - Default token list with verified tokens (USDC, wUSDC, ACHS)
+- **Static Data**: All token data is bundled into the client app
 
 ### Shared (`shared/`)
 - **Schema**: TypeScript types for tokens, imported tokens, and liquidity positions
@@ -78,18 +77,26 @@ USDC (native token) can be wrapped to wUSDC (ERC20 token):
 - Accessible from swap interface when selecting USDC/wUSDC pair
 
 ## Development Notes
-- Token verification is managed in `tokens.json` - add `"verified": true` for blue checkmark
+- **100% Static Application**: No backend server, all data from blockchain or local modules
+- Token verification is managed in `client/src/data/tokens.ts` - add `"verified": true` for blue checkmark
 - Imported tokens are stored in localStorage under `importedTokens` key
 - All blockchain interactions use ethers.js v6
 - Wallet state management via Wagmi React hooks
 - RainbowKit provides the wallet connection UI
+- Build system uses pure Vite CLI for dev, build, and preview
 
 ## Recent Changes
-- **Nov 22, 2024**: Initial DEX UI implementation with swap, liquidity, and token import features
-- Configured RainbowKit for ARC Testnet
-- Implemented token list with USDC, wUSDC, and ACHS
-- Built token selector with search and import functionality
-- Created wrap/unwrap interface for USDC/wUSDC
+- **Nov 22, 2024**: 
+  - **Migrated to 100% Static Architecture**: Removed all backend server code to create a truly serverless application like Uniswap
+  - Converted from Express backend to pure Vite-based static application
+  - Moved token data from server API to client-side module (`client/src/data/tokens.ts`)
+  - All scripts now use pure Vite CLI (no Node.js server wrapper)
+  - Ready for deployment to static hosting platforms (Vercel, Netlify, GitHub Pages, etc.)
+  - Initial DEX UI implementation with swap, liquidity, and token import features
+  - Configured RainbowKit for ARC Testnet
+  - Implemented token list with USDC, wUSDC, and ACHS
+  - Built token selector with search and import functionality
+  - Created wrap/unwrap interface for USDC/wUSDC
 
 ## Implementation Status
 
