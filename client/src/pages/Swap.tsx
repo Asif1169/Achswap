@@ -16,6 +16,16 @@ const ERC20_ABI = [
   "function symbol() view returns (string)",
   "function decimals() view returns (uint8)",
   "function balanceOf(address) view returns (uint256)",
+  "function approve(address spender, uint256 amount) returns (bool)",
+  "function allowance(address owner, address spender) view returns (uint256)",
+];
+
+// wUSDC contract ABI for deposit/withdraw
+const WUSDC_ABI = [
+  "function deposit() payable",
+  "function withdraw(uint256 amount) returns (bool)",
+  "function approve(address spender, uint256 amount) returns (bool)",
+  "function allowance(address owner, address spender) view returns (uint256)",
 ];
 
 export default function Swap() {
@@ -150,33 +160,89 @@ export default function Swap() {
   };
 
   const handleWrap = async (amount: string) => {
-    toast({
-      title: "Wrapping",
-      description: `Wrapping ${amount} USDC to wUSDC`,
-    });
-    setShowWrapModal(false);
-    setFromAmount("");
-    setToAmount("");
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    toast({
-      title: "Wrap successful (UI only)",
-      description: `Note: Smart contract integration required for actual wrapping`,
-    });
+    if (!address || !window.ethereum || !wusdcToken) return;
+
+    try {
+      const provider = new BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      
+      const amountBigInt = parseUnits(amount, 18);
+      
+      // For native USDC, we send it to wUSDC contract's deposit function
+      // The wUSDC contract receives native tokens and mints wrapped tokens
+      const wusdcContract = new Contract(wusdcToken.address, WUSDC_ABI, signer);
+      
+      toast({
+        title: "Wrapping...",
+        description: `Wrapping ${amount} USDC to wUSDC`,
+      });
+
+      // Call deposit with the amount as value (native token transfer)
+      const tx = await wusdcContract.deposit({ value: amountBigInt });
+      await tx.wait();
+      
+      setShowWrapModal(false);
+      setFromAmount("");
+      setToAmount("");
+      
+      toast({
+        title: "Wrap successful!",
+        description: `Successfully wrapped ${amount} USDC to wUSDC`,
+      });
+    } catch (error: any) {
+      console.error('Wrap error:', error);
+      toast({
+        title: "Wrap failed",
+        description: error.reason || error.message || "Failed to wrap tokens",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleUnwrap = async (amount: string) => {
-    toast({
-      title: "Unwrapping",
-      description: `Unwrapping ${amount} wUSDC to USDC`,
-    });
-    setShowWrapModal(false);
-    setFromAmount("");
-    setToAmount("");
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    toast({
-      title: "Unwrap successful (UI only)",
-      description: `Note: Smart contract integration required for actual unwrapping`,
-    });
+    if (!address || !window.ethereum || !wusdcToken) return;
+
+    try {
+      const provider = new BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      
+      const amountBigInt = parseUnits(amount, 18);
+      const wusdcContract = new Contract(wusdcToken.address, WUSDC_ABI, signer);
+      
+      toast({
+        title: "Unwrapping...",
+        description: `Unwrapping ${amount} wUSDC to USDC`,
+      });
+
+      // Check allowance first
+      const allowance = await wusdcContract.allowance(address, wusdcToken.address);
+      
+      // If allowance is insufficient, approve first
+      if (allowance < amountBigInt) {
+        const approveTx = await wusdcContract.approve(wusdcToken.address, amountBigInt);
+        await approveTx.wait();
+      }
+      
+      // Call withdraw
+      const tx = await wusdcContract.withdraw(amountBigInt);
+      await tx.wait();
+      
+      setShowWrapModal(false);
+      setFromAmount("");
+      setToAmount("");
+      
+      toast({
+        title: "Unwrap successful!",
+        description: `Successfully unwrapped ${amount} wUSDC to USDC`,
+      });
+    } catch (error: any) {
+      console.error('Unwrap error:', error);
+      toast({
+        title: "Unwrap failed",
+        description: error.reason || error.message || "Failed to unwrap tokens",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleSwap = async () => {
