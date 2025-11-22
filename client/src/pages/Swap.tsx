@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { ArrowDownUp, Settings } from "lucide-react";
 import { TokenSelector } from "@/components/TokenSelector";
 import { WrapUnwrapModal } from "@/components/WrapUnwrapModal";
-import { useAccount } from "wagmi";
+import { useAccount, useBalance } from "wagmi";
 import { useToast } from "@/hooks/use-toast";
 import type { Token } from "@shared/schema";
 import { Contract, BrowserProvider, formatUnits, parseUnits } from "ethers";
@@ -149,6 +149,36 @@ export default function Swap() {
     setToAmount(fromAmount);
   };
 
+  const handleWrap = async (amount: string) => {
+    toast({
+      title: "Wrapping",
+      description: `Wrapping ${amount} USDC to wUSDC`,
+    });
+    setShowWrapModal(false);
+    setFromAmount("");
+    setToAmount("");
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    toast({
+      title: "Wrap successful (UI only)",
+      description: `Note: Smart contract integration required for actual wrapping`,
+    });
+  };
+
+  const handleUnwrap = async (amount: string) => {
+    toast({
+      title: "Unwrapping",
+      description: `Unwrapping ${amount} wUSDC to USDC`,
+    });
+    setShowWrapModal(false);
+    setFromAmount("");
+    setToAmount("");
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    toast({
+      title: "Unwrap successful (UI only)",
+      description: `Note: Smart contract integration required for actual unwrapping`,
+    });
+  };
+
   const handleSwap = async () => {
     if (!fromToken || !toToken || !fromAmount || parseFloat(fromAmount) <= 0) return;
     
@@ -206,6 +236,23 @@ export default function Swap() {
     }
   };
 
+  // Fetch balances for selected tokens
+  const isFromTokenNative = fromToken?.address === "0x0000000000000000000000000000000000000000";
+  const isToTokenNative = toToken?.address === "0x0000000000000000000000000000000000000000";
+
+  const { data: fromBalance } = useBalance({
+    address: address as `0x${string}` | undefined,
+    ...(fromToken && !isFromTokenNative ? { token: fromToken.address as `0x${string}` } : {}),
+  });
+
+  const { data: toBalance } = useBalance({
+    address: address as `0x${string}` | undefined,
+    ...(toToken && !isToTokenNative ? { token: toToken.address as `0x${string}` } : {}),
+  });
+
+  const fromBalanceFormatted = fromBalance ? parseFloat(formatUnits(fromBalance.value, fromBalance.decimals)).toFixed(6) : "0.00";
+  const toBalanceFormatted = toBalance ? parseFloat(formatUnits(toBalance.value, toBalance.decimals)).toFixed(6) : "0.00";
+
   const usdcToken = tokens.find(t => t.symbol === 'USDC');
   const wusdcToken = tokens.find(t => t.symbol === 'wUSDC');
 
@@ -232,7 +279,7 @@ export default function Swap() {
               <label className="text-sm font-medium text-muted-foreground">From</label>
               {isConnected && fromToken && (
                 <span className="text-xs text-muted-foreground">
-                  Balance: 0.00
+                  Balance: {fromBalanceFormatted}
                 </span>
               )}
             </div>
@@ -287,7 +334,7 @@ export default function Swap() {
               <label className="text-sm font-medium text-muted-foreground">To</label>
               {isConnected && toToken && (
                 <span className="text-xs text-muted-foreground">
-                  Balance: 0.00
+                  Balance: {toBalanceFormatted}
                 </span>
               )}
             </div>
@@ -374,6 +421,8 @@ export default function Swap() {
           onClose={() => setShowWrapModal(false)}
           usdcToken={usdcToken}
           wusdcToken={wusdcToken}
+          onWrap={handleWrap}
+          onUnwrap={handleUnwrap}
         />
       )}
     </div>

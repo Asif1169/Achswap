@@ -4,10 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus } from "lucide-react";
 import { TokenSelector } from "@/components/TokenSelector";
-import { useAccount } from "wagmi";
+import { useAccount, useBalance } from "wagmi";
 import { useToast } from "@/hooks/use-toast";
 import type { Token } from "@shared/schema";
-import { Contract, BrowserProvider } from "ethers";
+import { Contract, BrowserProvider, formatUnits } from "ethers";
 
 const ERC20_ABI = [
   "function name() view returns (string)",
@@ -128,6 +128,23 @@ export default function AddLiquidity() {
     }
   };
 
+  // Fetch balances for selected tokens
+  const isTokenANative = tokenA?.address === "0x0000000000000000000000000000000000000000";
+  const isTokenBNative = tokenB?.address === "0x0000000000000000000000000000000000000000";
+
+  const { data: balanceA } = useBalance({
+    address: address as `0x${string}` | undefined,
+    ...(tokenA && !isTokenANative ? { token: tokenA.address as `0x${string}` } : {}),
+  });
+
+  const { data: balanceB } = useBalance({
+    address: address as `0x${string}` | undefined,
+    ...(tokenB && !isTokenBNative ? { token: tokenB.address as `0x${string}` } : {}),
+  });
+
+  const balanceAFormatted = balanceA ? parseFloat(formatUnits(balanceA.value, balanceA.decimals)).toFixed(6) : "0.00";
+  const balanceBFormatted = balanceB ? parseFloat(formatUnits(balanceB.value, balanceB.decimals)).toFixed(6) : "0.00";
+
   const handleAddLiquidity = async () => {
     if (!tokenA || !tokenB || !amountA || !amountB || parseFloat(amountA) <= 0 || parseFloat(amountB) <= 0) return;
     
@@ -175,7 +192,7 @@ export default function AddLiquidity() {
               <label className="text-sm font-medium text-muted-foreground">Token A</label>
               {isConnected && tokenA && (
                 <span className="text-xs text-muted-foreground">
-                  Balance: 0.00
+                  Balance: {balanceAFormatted}
                 </span>
               )}
             </div>
@@ -223,6 +240,9 @@ export default function AddLiquidity() {
               <label className="text-sm font-medium text-muted-foreground">Token B</label>
               {isConnected && tokenB && (
                 <span className="text-xs text-muted-foreground">
+                  Balance: {balanceBFormatted}
+                </span>
+              )}
                   Balance: 0.00
                 </span>
               )}
