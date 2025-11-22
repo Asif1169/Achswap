@@ -178,7 +178,7 @@ function TokenRow({ token, userAddress, onClick }: { token: Token; userAddress?:
               onError={() => setImgError(true)}
             />
           ) : (
-            <HelpCircle className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
+            <div className="w-full h-full rounded-full bg-red-500"></div>
           )}
         </div>
         <div className="min-w-0">

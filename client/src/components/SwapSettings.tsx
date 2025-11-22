@@ -15,6 +15,8 @@ interface SwapSettingsProps {
   onDeadlineChange: (value: number) => void;
   recipientAddress: string;
   onRecipientAddressChange: (value: string) => void;
+  quoteRefreshInterval?: number;
+  onQuoteRefreshIntervalChange?: (value: number) => void;
 }
 
 export function SwapSettings({
@@ -26,9 +28,12 @@ export function SwapSettings({
   onDeadlineChange,
   recipientAddress,
   onRecipientAddressChange,
+  quoteRefreshInterval = 30,
+  onQuoteRefreshIntervalChange,
 }: SwapSettingsProps) {
   const [customSlippage, setCustomSlippage] = useState(slippage.toString());
   const [customDeadline, setCustomDeadline] = useState(deadline.toString());
+  const [customRefreshInterval, setCustomRefreshInterval] = useState(quoteRefreshInterval.toString());
 
   const presetSlippages = [0.1, 0.5, 1.0];
 
@@ -45,6 +50,14 @@ export function SwapSettings({
     const numValue = parseInt(value);
     if (!isNaN(numValue) && numValue > 0) {
       onDeadlineChange(numValue);
+    }
+  };
+
+  const handleRefreshIntervalChange = (value: string) => {
+    setCustomRefreshInterval(value);
+    const numValue = parseInt(value);
+    if (!isNaN(numValue) && numValue >= 5 && onQuoteRefreshIntervalChange) {
+      onQuoteRefreshIntervalChange(numValue);
     }
   };
 
@@ -116,6 +129,27 @@ export function SwapSettings({
             </div>
             <p className="text-xs text-muted-foreground">
               Your transaction will revert if pending for more than this time.
+            </p>
+          </div>
+
+          {/* Quote Refresh Interval */}
+          <div className="space-y-3">
+            <Label className="text-sm font-medium">Quote Refresh Interval (seconds)</Label>
+            <div className="relative">
+              <Input
+                type="number"
+                placeholder="30"
+                value={customRefreshInterval}
+                onChange={(e) => handleRefreshIntervalChange(e.target.value)}
+                className="pr-16"
+                min="5"
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                seconds
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              How often to refresh swap quotes automatically.
             </p>
           </div>
 

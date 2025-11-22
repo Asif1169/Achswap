@@ -45,6 +45,7 @@ export default function Swap() {
   const [deadline, setDeadline] = useState(20);
   const [recipientAddress, setRecipientAddress] = useState("");
   const [priceImpact, setPriceImpact] = useState<number | null>(null);
+  const [quoteRefreshInterval, setQuoteRefreshInterval] = useState(30);
 
   const { address, isConnected } = useAccount();
   const { toast } = useToast();
@@ -140,22 +141,38 @@ export default function Swap() {
         const outputAmount = formatAmount(amounts[amounts.length - 1], toToken.decimals);
         setToAmount(outputAmount);
 
-        // Calculate price impact
-        // Normalize both amounts to same decimal precision (18 decimals) for accurate comparison
+        // Calculate price impact properly for any decimal combination
         const fromAmountBigInt = parseAmount(fromAmount, fromToken.decimals);
         const outputAmountBigInt = amounts[amounts.length - 1];
         
-        // Convert both to 18 decimals for comparison
-        const fromNormalized = fromAmountBigInt * (10n ** BigInt(Math.max(0, 18 - fromToken.decimals)));
-        const outputNormalized = outputAmountBigInt * (10n ** BigInt(Math.max(0, 18 - toToken.decimals)));
-
-        if (fromNormalized > 0n && outputNormalized > 0n) {
-          // Calculate impact: |1 - (output / input)| * 100
-          // Using bigint arithmetic for precision
-          const ratio = (outputNormalized * 10000n) / fromNormalized; // multiply by 10000 for precision
-          const impact = Number(ratio > 10000n ? ratio - 10000n : 10000n - ratio) / 100;
-          setPriceImpact(impact);
-        } else {
+        // Calculate expected 1:1 value ratio at same precision
+        // Price impact = |1 - (actualOutput / expectedOutput)| * 100
+        // For tokens with different decimals, normalize to compare actual values
+        
+        // Get the ratio: how much of toToken we get per 1 fromToken
+        const ONE_TOKEN = 10n ** BigInt(fromToken.decimals);
+        
+        try {
+          // Get quote for 1 unit of fromToken
+          const oneTokenAmounts = await router.getAmountsOut(ONE_TOKEN, path);
+          const oneTokenOutput = oneTokenAmounts[oneTokenAmounts.length - 1];
+          
+          // Calculate expected output based on linear scaling
+          const expectedOutput = (fromAmountBigInt * oneTokenOutput) / ONE_TOKEN;
+          
+          // Calculate price impact as deviation from linear expectation
+          if (expectedOutput > 0n && outputAmountBigInt > 0n) {
+            const impactBasisPoints = expectedOutput > outputAmountBigInt
+              ? ((expectedOutput - outputAmountBigInt) * 10000n) / expectedOutput
+              : ((outputAmountBigInt - expectedOutput) * 10000n) / expectedOutput;
+            
+            const impact = Number(impactBasisPoints) / 100;
+            setPriceImpact(Math.abs(impact));
+          } else {
+            setPriceImpact(0);
+          }
+        } catch {
+          // Fallback: simple comparison if quote fails
           setPriceImpact(0);
         }
       } catch (error) {
@@ -168,7 +185,12 @@ export default function Swap() {
     };
 
     fetchQuote();
-  }, [fromAmount, fromToken, toToken, tokens]); // Include tokens in dependency array
+    
+    // Set up auto-refresh interval
+    const intervalId = setInterval(fetchQuote, quoteRefreshInterval * 1000);
+    
+    return () => clearInterval(intervalId);
+  }, [fromAmount, fromToken, toToken, tokens, quoteRefreshInterval])
 
   const loadTokens = async () => {
     try {
@@ -634,7 +656,7 @@ export default function Swap() {
     }
   };
 
-  // Fetch balances for selected tokens
+  // Fetch balances for selected tokens with auto-refresh
   const isFromTokenNative = fromToken?.address === "0x0000000000000000000000000000000000000000";
   const isToTokenNative = toToken?.address === "0x0000000000000000000000000000000000000000";
 
@@ -647,6 +669,18 @@ export default function Swap() {
     address: address as `0x${string}` | undefined,
     ...(toToken && !isToTokenNative ? { token: toToken.address as `0x${string}` } : {}),
   });
+
+  // Auto-refresh balances every 30 seconds
+  useEffect(() => {
+    if (!isConnected) return;
+
+    const intervalId = setInterval(() => {
+      refetchFromBalance();
+      refetchToBalance();
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(intervalId);
+  }, [isConnected, refetchFromBalance, refetchToBalance]);
 
   let fromBalanceFormatted = "0.00";
   let toBalanceFormatted = "0.00";
@@ -731,12 +765,11 @@ export default function Swap() {
                           className="w-6 h-6 rounded-full group-hover:scale-110 transition-transform duration-300" 
                           onError={(e) => {
                             console.error('Failed to load token logo:', fromToken.logoURI);
-                            e.currentTarget.style.display = 'none'; // Hide broken image
-                            // Optionally display a fallback character/icon here
+                            e.currentTarget.style.display = 'none';
                           }}
                         />
                       ) : (
-                        <div className="w-6 h-6 rounded-full bg-background flex items-center justify-center text-xs text-muted-foreground">?</div>
+                        <div className="w-6 h-6 rounded-full bg-red-500"></div>
                       )}
                       <span className="font-semibold text-sm md:text-base">{fromToken.symbol}</span>
                     </div>
@@ -798,12 +831,11 @@ export default function Swap() {
                           className="w-6 h-6 rounded-full" 
                           onError={(e) => {
                             console.error('Failed to load token logo:', toToken.logoURI);
-                            e.currentTarget.style.display = 'none'; // Hide broken image
-                            // Optionally display a fallback character/icon here
+                            e.currentTarget.style.display = 'none';
                           }}
                         />
                       ) : (
-                        <div className="w-6 h-6 rounded-full bg-background flex items-center justify-center text-xs text-muted-foreground">?</div>
+                        <div className="w-6 h-6 rounded-full bg-red-500"></div>
                       )}
                       <span className="font-semibold text-sm md:text-base">{toToken.symbol}</span>
                     </div>
@@ -898,6 +930,8 @@ export default function Swap() {
         onDeadlineChange={setDeadline}
         recipientAddress={recipientAddress}
         onRecipientAddressChange={setRecipientAddress}
+        quoteRefreshInterval={quoteRefreshInterval}
+        onQuoteRefreshIntervalChange={setQuoteRefreshInterval}
       />
     </div>
   );
