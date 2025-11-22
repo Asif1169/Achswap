@@ -35,7 +35,7 @@ export default function RemoveLiquidity() {
   const [tokens, setTokens] = useState<Token[]>([]);
   const [pairAddress, setPairAddress] = useState<string | null>(null);
   const [lpBalance, setLpBalance] = useState<string>("0");
-  
+
   const { address, isConnected } = useAccount();
   const { toast } = useToast();
 
@@ -53,10 +53,10 @@ export default function RemoveLiquidity() {
     try {
       const response = await fetch('/api/tokens');
       const defaultTokens = await response.json();
-      
+
       const imported = localStorage.getItem('importedTokens');
       const importedTokens = imported ? JSON.parse(imported) : [];
-      
+
       setTokens([...defaultTokens, ...importedTokens]);
     } catch (error) {
       console.error('Failed to load tokens:', error);
@@ -72,10 +72,10 @@ export default function RemoveLiquidity() {
       if (!window.ethereum) {
         throw new Error("Please connect your wallet to import tokens");
       }
-      
+
       const provider = new BrowserProvider(window.ethereum);
       const contract = new Contract(address, ERC20_ABI, provider);
-      
+
       const timeout = new Promise((_, reject) => 
         setTimeout(() => reject(new Error("Request timed out")), 10000)
       );
@@ -105,15 +105,15 @@ export default function RemoveLiquidity() {
 
       const imported = localStorage.getItem('importedTokens');
       const importedTokens = imported ? JSON.parse(imported) : [];
-      
+
       const alreadyImported = importedTokens.find((t: Token) => t.address.toLowerCase() === address.toLowerCase());
       if (!alreadyImported) {
         importedTokens.push(newToken);
         localStorage.setItem('importedTokens', JSON.stringify(importedTokens));
       }
-      
+
       setTokens(prev => [...prev, newToken]);
-      
+
       toast({
         title: "Token imported",
         description: `${symbol} has been added to your token list`,
@@ -143,7 +143,7 @@ export default function RemoveLiquidity() {
 
       const factory = new Contract(FACTORY_ADDRESS, FACTORY_ABI, provider);
       const pair = await factory.getPair(tokenA.address, tokenB.address);
-      
+
       if (pair === "0x0000000000000000000000000000000000000000") {
         setPairAddress(null);
         setLpBalance("0");
@@ -163,7 +163,7 @@ export default function RemoveLiquidity() {
 
   const handleRemoveLiquidity = async () => {
     if (!tokenA || !tokenB || !pairAddress || parseFloat(lpBalance) <= 0) return;
-    
+
     setIsRemoving(true);
     try {
       if (!address || !window.ethereum) {
@@ -172,7 +172,7 @@ export default function RemoveLiquidity() {
 
       const provider = new BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
-      
+
       const ROUTER_ADDRESS = "0xFb5B0cc9a61E76C5B5c60b52dF092F30B36c547e";
       const ROUTER_ABI = [
         "function removeLiquidity(address tokenA, address tokenB, uint liquidity, uint amountAMin, uint amountBMin, address to, uint deadline) external returns (uint amountA, uint amountB)",
@@ -181,11 +181,11 @@ export default function RemoveLiquidity() {
 
       const router = new Contract(ROUTER_ADDRESS, ROUTER_ABI, signer);
       const pairContract = new Contract(pairAddress, ERC20_ABI, signer);
-      
+
       // Calculate liquidity to remove based on percentage
       const totalLiquidity = parseUnits(lpBalance, 18);
       const liquidityToRemove = totalLiquidity * BigInt(percentage[0]) / 100n;
-      
+
       // Approve router to spend LP tokens
       const allowance = await pairContract.allowance(address, ROUTER_ADDRESS);
       if (allowance < liquidityToRemove) {
@@ -195,7 +195,7 @@ export default function RemoveLiquidity() {
 
       // Deadline: 20 minutes from now
       const deadline = Math.floor(Date.now() / 1000) + 60 * 20;
-      
+
       // Minimum amounts with 5% slippage
       const amountAMin = 0n; // In production, calculate this properly
       const amountBMin = 0n;
@@ -231,14 +231,14 @@ export default function RemoveLiquidity() {
           deadline
         );
       }
-      
+
       await tx.wait();
-      
+
       toast({
         title: "Liquidity removed!",
         description: `Successfully removed ${percentage[0]}% of your liquidity`,
       });
-      
+
       setPercentage([25]);
       fetchPairInfo(); // Refresh LP balance
     } catch (error: any) {
@@ -262,7 +262,7 @@ export default function RemoveLiquidity() {
             Remove liquidity to receive tokens back
           </p>
         </CardHeader>
-        
+
         <CardContent className="space-y-4 md:space-y-6">
           <div className="space-y-4">
             <div className="flex gap-2">
@@ -306,7 +306,7 @@ export default function RemoveLiquidity() {
                   <label className="text-sm font-medium">Amount to remove</label>
                   <span className="text-2xl font-bold text-primary">{percentage[0]}%</span>
                 </div>
-                
+
                 <Slider
                   data-testid="slider-remove-percentage"
                   value={percentage}
@@ -315,7 +315,7 @@ export default function RemoveLiquidity() {
                   step={1}
                   className="py-4"
                 />
-                
+
                 <div className="flex gap-2">
                   {[25, 50, 75, 100].map((value) => (
                     <Button

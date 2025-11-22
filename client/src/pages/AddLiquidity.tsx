@@ -7,7 +7,7 @@ import { TokenSelector } from "@/components/TokenSelector";
 import { useAccount, useBalance } from "wagmi";
 import { useToast } from "@/hooks/use-toast";
 import type { Token } from "@shared/schema";
-import { Contract, BrowserProvider, formatUnits } from "ethers";
+import { Contract, BrowserProvider, formatUnits, parseUnits } from "ethers";
 
 const ERC20_ABI = [
   "function name() view returns (string)",
