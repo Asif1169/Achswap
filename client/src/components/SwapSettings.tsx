@@ -63,16 +63,16 @@ export function SwapSettings({
 
   return (
     <Dialog open={open} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-md bg-card/98 border-primary/20">
+      <DialogContent className="max-w-md bg-slate-900 border-slate-700">
         <DialogHeader>
-          <DialogTitle className="text-foreground">Swap Settings</DialogTitle>
-          <DialogDescription className="text-muted-foreground">Customize your swap preferences</DialogDescription>
+          <DialogTitle className="text-white">Swap Settings</DialogTitle>
+          <DialogDescription className="text-slate-300">Customize your swap preferences</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 mt-4">
           {/* Slippage Tolerance */}
           <div className="space-y-3">
-            <Label className="text-sm font-medium text-foreground">Slippage Tolerance (%)</Label>
+            <Label className="text-sm font-medium text-white">Slippage Tolerance (%)</Label>
             <div className="flex gap-2">
               {presetSlippages.map((preset) => (
                 <Button
@@ -95,12 +95,12 @@ export function SwapSettings({
                 placeholder="Custom"
                 value={customSlippage}
                 onChange={(e) => handleSlippageChange(e.target.value)}
-                className="pr-8 bg-muted/50 border-border/60 text-foreground placeholder:text-muted-foreground"
+                className="pr-8 bg-slate-800 border-slate-600 text-white placeholder:text-slate-400"
                 min="0"
                 max="50"
                 step="0.1"
               />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">
                 %
               </span>
             </div>
@@ -113,57 +113,57 @@ export function SwapSettings({
 
           {/* Transaction Deadline */}
           <div className="space-y-3">
-            <Label className="text-sm font-medium text-foreground">Transaction Deadline (minutes)</Label>
+            <Label className="text-sm font-medium text-white">Transaction Deadline (minutes)</Label>
             <div className="relative">
               <Input
                 type="number"
                 placeholder="20"
                 value={customDeadline}
                 onChange={(e) => handleDeadlineChange(e.target.value)}
-                className="pr-16 bg-muted/50 border-border/60 text-foreground placeholder:text-muted-foreground"
+                className="pr-16 bg-slate-800 border-slate-600 text-white placeholder:text-slate-400"
                 min="1"
               />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">
                 minutes
               </span>
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-slate-400">
               Your transaction will revert if pending for more than this time.
             </p>
           </div>
 
           {/* Quote Refresh Interval */}
           <div className="space-y-3">
-            <Label className="text-sm font-medium text-foreground">Quote Refresh Interval (seconds)</Label>
+            <Label className="text-sm font-medium text-white">Quote Refresh Interval (seconds)</Label>
             <div className="relative">
               <Input
                 type="number"
                 placeholder="30"
                 value={customRefreshInterval}
                 onChange={(e) => handleRefreshIntervalChange(e.target.value)}
-                className="pr-16 bg-muted/50 border-border/60 text-foreground placeholder:text-muted-foreground"
+                className="pr-16 bg-slate-800 border-slate-600 text-white placeholder:text-slate-400"
                 min="5"
               />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">
                 seconds
               </span>
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-slate-400">
               How often to refresh swap quotes automatically.
             </p>
           </div>
 
           {/* Send to Different Wallet */}
           <div className="space-y-3">
-            <Label className="text-sm font-medium text-foreground">Recipient Address (Optional)</Label>
+            <Label className="text-sm font-medium text-white">Recipient Address (Optional)</Label>
             <Input
               type="text"
               placeholder="0x... (leave empty to send to your wallet)"
               value={recipientAddress}
               onChange={(e) => onRecipientAddressChange(e.target.value)}
-              className="bg-muted/50 border-border/60 text-foreground placeholder:text-muted-foreground"
+              className="bg-slate-800 border-slate-600 text-white placeholder:text-slate-400"
             />
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-slate-400">
               Send tokens to a different address after swap.
             </p>
           </div>
