@@ -13,11 +13,15 @@ publicDir = "dist/public"
 
 [[ports]]
 localPort = 5000
-externalPort = 80
+externalPort = 3000
 
 [[ports]]
 localPort = 5001
 externalPort = 3001
+
+[[ports]]
+localPort = 34825
+externalPort = 80
 
 [[ports]]
 localPort = 35595
@@ -25,15 +29,11 @@ externalPort = 3002
 
 [[ports]]
 localPort = 36915
-externalPort = 3000
-
-[[ports]]
-localPort = 40077
-externalPort = 4200
+externalPort = 8081
 
 [[ports]]
 localPort = 41323
-externalPort = 3003
+externalPort = 8099
 
 [env]
 PORT = "5000"
@@ -61,3 +61,8 @@ waitForPort = 5000
 
 [agent]
 expertMode = true
+
+[userenv]
+
+[userenv.development]
+VITE_WALLETCONNECT_PROJECT_ID = "placeholder_project_id_replace_with_real_one"
