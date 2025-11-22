@@ -61,18 +61,7 @@ export default function AddLiquidity() {
   useEffect(() => {
     if (tokens.length === 0) return;
 
-    // Only parse URL once when tokens first load
-    if (tokenA || tokenB) return;
-
-    const url = window.location.href;
-    const urlParts = url.split('?');
-    
-    if (urlParts.length < 2) return;
-    
-    const queryString = urlParts[1];
-    const params = new URLSearchParams(queryString);
-    
-    // Get all query parameters
+    const params = new URLSearchParams(window.location.search);
     const queryKeys = Array.from(params.keys());
     
     // Find token pair query (e.g., "usdc+achs" or "usdc+0x000000")
@@ -95,11 +84,11 @@ export default function AddLiquidity() {
         const foundTokenA = findToken(tokenAStr);
         const foundTokenB = findToken(tokenBStr);
         
-        if (foundTokenA) setTokenA(foundTokenA);
-        if (foundTokenB) setTokenB(foundTokenB);
+        if (foundTokenA && !tokenA) setTokenA(foundTokenA);
+        if (foundTokenB && !tokenB) setTokenB(foundTokenB);
       }
     }
-  }, [tokens, tokenA, tokenB]);
+  }, [tokens]);
 
   const openExplorer = (txHash: string) => {
     window.open(`${ARCscan_EXPLORER_URL}${txHash}`, "_blank");

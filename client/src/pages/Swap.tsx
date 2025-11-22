@@ -64,18 +64,7 @@ export default function Swap() {
   useEffect(() => {
     if (tokens.length === 0) return;
 
-    // Only parse URL once when tokens first load
-    if (fromToken || toToken) return;
-
-    const url = window.location.href;
-    const urlParts = url.split('?');
-    
-    if (urlParts.length < 2) return;
-    
-    const queryString = urlParts[1];
-    const params = new URLSearchParams(queryString);
-    
-    // Get all query parameters
+    const params = new URLSearchParams(window.location.search);
     const queryKeys = Array.from(params.keys());
     
     // Find token pair query (e.g., "usdc+achs" or "usdc+0x000000")
@@ -98,17 +87,17 @@ export default function Swap() {
         const foundFromToken = findToken(fromTokenStr);
         const foundToToken = findToken(toTokenStr);
         
-        if (foundFromToken) setFromToken(foundFromToken);
-        if (foundToToken) setToToken(foundToToken);
+        if (foundFromToken && !fromToken) setFromToken(foundFromToken);
+        if (foundToToken && !toToken) setToToken(foundToToken);
       }
     }
     
     // Parse amount parameter
     const amountParam = params.get('amount');
-    if (amountParam && !isNaN(parseFloat(amountParam)) && parseFloat(amountParam) > 0) {
+    if (amountParam && !isNaN(parseFloat(amountParam)) && parseFloat(amountParam) > 0 && !fromAmount) {
       setFromAmount(amountParam);
     }
-  }, [tokens, fromToken, toToken]);
+  }, [tokens]);
 
   // Fetch quote when fromAmount, fromToken, or toToken changes
   useEffect(() => {

@@ -63,16 +63,16 @@ export function SwapSettings({
 
   return (
     <Dialog open={open} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md bg-card/98 border-primary/20">
         <DialogHeader>
-          <DialogTitle>Swap Settings</DialogTitle>
-          <DialogDescription>Customize your swap preferences</DialogDescription>
+          <DialogTitle className="text-foreground">Swap Settings</DialogTitle>
+          <DialogDescription className="text-muted-foreground">Customize your swap preferences</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 mt-4">
           {/* Slippage Tolerance */}
           <div className="space-y-3">
-            <Label className="text-sm font-medium">Slippage Tolerance (%)</Label>
+            <Label className="text-sm font-medium text-foreground">Slippage Tolerance (%)</Label>
             <div className="flex gap-2">
               {presetSlippages.map((preset) => (
                 <Button
@@ -95,7 +95,7 @@ export function SwapSettings({
                 placeholder="Custom"
                 value={customSlippage}
                 onChange={(e) => handleSlippageChange(e.target.value)}
-                className="pr-8"
+                className="pr-8 bg-muted/50 border-border/60 text-foreground placeholder:text-muted-foreground"
                 min="0"
                 max="50"
                 step="0.1"
@@ -105,7 +105,7 @@ export function SwapSettings({
               </span>
             </div>
             {slippage > 5 && (
-              <p className="text-xs text-orange-500">
+              <p className="text-xs text-orange-400 bg-orange-500/10 p-2 rounded border border-orange-500/20">
                 High slippage tolerance. Your transaction may be frontrun.
               </p>
             )}
@@ -113,14 +113,14 @@ export function SwapSettings({
 
           {/* Transaction Deadline */}
           <div className="space-y-3">
-            <Label className="text-sm font-medium">Transaction Deadline (minutes)</Label>
+            <Label className="text-sm font-medium text-foreground">Transaction Deadline (minutes)</Label>
             <div className="relative">
               <Input
                 type="number"
                 placeholder="20"
                 value={customDeadline}
                 onChange={(e) => handleDeadlineChange(e.target.value)}
-                className="pr-16"
+                className="pr-16 bg-muted/50 border-border/60 text-foreground placeholder:text-muted-foreground"
                 min="1"
               />
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
@@ -134,14 +134,14 @@ export function SwapSettings({
 
           {/* Quote Refresh Interval */}
           <div className="space-y-3">
-            <Label className="text-sm font-medium">Quote Refresh Interval (seconds)</Label>
+            <Label className="text-sm font-medium text-foreground">Quote Refresh Interval (seconds)</Label>
             <div className="relative">
               <Input
                 type="number"
                 placeholder="30"
                 value={customRefreshInterval}
                 onChange={(e) => handleRefreshIntervalChange(e.target.value)}
-                className="pr-16"
+                className="pr-16 bg-muted/50 border-border/60 text-foreground placeholder:text-muted-foreground"
                 min="5"
               />
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
@@ -155,12 +155,13 @@ export function SwapSettings({
 
           {/* Send to Different Wallet */}
           <div className="space-y-3">
-            <Label className="text-sm font-medium">Recipient Address (Optional)</Label>
+            <Label className="text-sm font-medium text-foreground">Recipient Address (Optional)</Label>
             <Input
               type="text"
               placeholder="0x... (leave empty to send to your wallet)"
               value={recipientAddress}
               onChange={(e) => onRecipientAddressChange(e.target.value)}
+              className="bg-muted/50 border-border/60 text-foreground placeholder:text-muted-foreground"
             />
             <p className="text-xs text-muted-foreground">
               Send tokens to a different address after swap.

@@ -68,13 +68,13 @@ export function TokenSelector({ open, onClose, onSelect, tokens, onImport }: Tok
 
   return (
     <Dialog open={open} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-md max-h-[90vh] sm:max-h-[85vh] flex flex-col p-4 sm:p-6" hideDefaultClose>
+      <DialogContent className="max-w-md max-h-[90vh] sm:max-h-[85vh] flex flex-col p-4 sm:p-6 bg-card/98 border-primary/20" hideDefaultClose>
         <DialogHeader className="relative flex-shrink-0">
-          <DialogTitle className="text-lg sm:text-xl font-semibold pr-8">Select a token</DialogTitle>
+          <DialogTitle className="text-lg sm:text-xl font-semibold pr-8 text-foreground">Select a token</DialogTitle>
           <Button
             variant="ghost"
             size="icon"
-            className="absolute right-0 top-0 h-8 w-8 hover:bg-accent"
+            className="absolute right-0 top-0 h-8 w-8 hover:bg-primary/20 text-foreground"
             onClick={onClose}
           >
             <X className="h-4 w-4" />
@@ -88,23 +88,23 @@ export function TokenSelector({ open, onClose, onSelect, tokens, onImport }: Tok
             placeholder="Search name or paste address"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
+            className="pl-9 bg-muted/50 border-border/60 text-foreground placeholder:text-muted-foreground"
           />
         </div>
 
         {importError && (
-          <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 p-3 rounded-md">
-            <AlertCircle className="h-4 w-4" />
-            {importError}
+          <div className="flex items-center gap-2 text-sm text-red-400 bg-red-500/10 p-3 rounded-md border border-red-500/20">
+            <AlertCircle className="h-4 w-4 flex-shrink-0" />
+            <span>{importError}</span>
           </div>
         )}
 
         {showImportButton && (
-          <div className="border border-warning/20 bg-warning/5 rounded-md p-3 sm:p-4 flex-shrink-0">
+          <div className="border border-yellow-500/30 bg-yellow-500/10 rounded-md p-3 sm:p-4 flex-shrink-0">
             <div className="flex items-start gap-2 mb-3">
-              <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5 text-warning mt-0.5 flex-shrink-0" />
+              <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-400 mt-0.5 flex-shrink-0" />
               <div>
-                <p className="font-medium text-xs sm:text-sm">Import token</p>
+                <p className="font-medium text-xs sm:text-sm text-foreground">Import token</p>
                 <p className="text-xs text-muted-foreground mt-1">
                   This token doesn't appear in the active token list.
                 </p>
@@ -114,15 +114,15 @@ export function TokenSelector({ open, onClose, onSelect, tokens, onImport }: Tok
               data-testid="button-import-token"
               onClick={handleImport} 
               disabled={isImporting}
-              className="w-full text-sm"
+              className="w-full text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
             >
               {isImporting ? "Importing..." : "Import Token"}
             </Button>
           </div>
         )}
 
-        <ScrollArea className="flex-1 -mx-4 sm:-mx-6 px-4 sm:px-6 min-h-0">
-          <div className="space-y-1">
+        <ScrollArea className="flex-1 -mx-4 sm:-mx-6 px-4 sm:px-6 min-h-0 bg-muted/20 rounded-lg">
+          <div className="space-y-1 py-2">
             {filteredTokens.length === 0 && !showImportButton ? (
               <div className="text-center py-12 text-muted-foreground">
                 <p className="text-sm">No tokens found</p>
@@ -169,10 +169,10 @@ function TokenRow({ token, userAddress, onClick }: { token: Token; userAddress?:
     <button
       data-testid={`button-select-token-${token.symbol}`}
       onClick={onClick}
-      className="w-full flex items-center justify-between p-2.5 sm:p-3 rounded-md hover-elevate active-elevate-2 text-left"
+      className="w-full flex items-center justify-between p-2.5 sm:p-3 rounded-md hover:bg-primary/10 active:bg-primary/20 transition-colors text-left border border-transparent hover:border-primary/30"
     >
       <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-        <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-muted flex items-center justify-center overflow-hidden flex-shrink-0">
+        <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-muted/50 flex items-center justify-center overflow-hidden flex-shrink-0 border border-border/40">
           {token.logoURI && !imgError ? (
             <img 
               src={token.logoURI} 
@@ -190,9 +190,9 @@ function TokenRow({ token, userAddress, onClick }: { token: Token; userAddress?:
         </div>
         <div className="min-w-0">
           <div className="flex items-center gap-1.5">
-            <span className="font-semibold text-sm sm:text-base truncate">{token.symbol}</span>
+            <span className="font-semibold text-sm sm:text-base truncate text-foreground">{token.symbol}</span>
             {token.verified && (
-              <CheckCircle2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-verified flex-shrink-0" data-testid={`icon-verified-${token.symbol}`} />
+              <CheckCircle2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-blue-400 flex-shrink-0" data-testid={`icon-verified-${token.symbol}`} />
             )}
           </div>
           <p className="text-xs sm:text-sm text-muted-foreground truncate">{token.name}</p>
@@ -200,7 +200,7 @@ function TokenRow({ token, userAddress, onClick }: { token: Token; userAddress?:
       </div>
       {userAddress && (
         <div className="text-right flex-shrink-0 ml-2">
-          <p className="font-mono text-xs sm:text-sm font-medium tabular-nums" data-testid={`text-balance-${token.symbol}`}>
+          <p className="font-mono text-xs sm:text-sm font-medium tabular-nums text-foreground" data-testid={`text-balance-${token.symbol}`}>
             {displayBalance}
           </p>
         </div>
