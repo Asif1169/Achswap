@@ -64,18 +64,20 @@ export default function Swap() {
   useEffect(() => {
     if (tokens.length === 0) return;
 
-    const path = window.location.pathname;
     const params = new URLSearchParams(window.location.search);
     
-    // Parse path like /usdc+achs or /usdc+0x000000
-    const pathMatch = path.match(/\/([^/+]+)\+([^/+]+)/);
+    // Get all query parameters
+    const queryKeys = Array.from(params.keys());
     
-    if (pathMatch) {
-      const [, fromTokenStr, toTokenStr] = pathMatch;
+    // Find token pair query (e.g., "usdc+achs" or "usdc+0x000000")
+    const pairQuery = queryKeys.find(key => key.includes('+'));
+    
+    if (pairQuery) {
+      const [fromTokenStr, toTokenStr] = pairQuery.split('+');
       
-      // Find tokens by symbol or address
+      // Find tokens by symbol or address (case-insensitive)
       const findToken = (str: string) => {
-        const normalized = str.toLowerCase();
+        const normalized = str.toLowerCase().trim();
         return tokens.find(t => 
           t.symbol.toLowerCase() === normalized || 
           t.address.toLowerCase() === normalized
@@ -91,7 +93,7 @@ export default function Swap() {
     
     // Parse amount parameter
     const amountParam = params.get('amount');
-    if (amountParam && !isNaN(parseFloat(amountParam))) {
+    if (amountParam && !isNaN(parseFloat(amountParam)) && parseFloat(amountParam) > 0) {
       setFromAmount(amountParam);
     }
   }, [tokens]);

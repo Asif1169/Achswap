@@ -57,6 +57,38 @@ export default function AddLiquidity() {
     loadTokens();
   }, []);
 
+  // Parse URL parameters for default token pair
+  useEffect(() => {
+    if (tokens.length === 0) return;
+
+    const params = new URLSearchParams(window.location.search);
+    
+    // Get all query parameters
+    const queryKeys = Array.from(params.keys());
+    
+    // Find token pair query (e.g., "usdc+achs" or "usdc+0x000000")
+    const pairQuery = queryKeys.find(key => key.includes('+'));
+    
+    if (pairQuery) {
+      const [tokenAStr, tokenBStr] = pairQuery.split('+');
+      
+      // Find tokens by symbol or address (case-insensitive)
+      const findToken = (str: string) => {
+        const normalized = str.toLowerCase().trim();
+        return tokens.find(t => 
+          t.symbol.toLowerCase() === normalized || 
+          t.address.toLowerCase() === normalized
+        );
+      };
+      
+      const foundTokenA = findToken(tokenAStr);
+      const foundTokenB = findToken(tokenBStr);
+      
+      if (foundTokenA) setTokenA(foundTokenA);
+      if (foundTokenB) setTokenB(foundTokenB);
+    }
+  }, [tokens]);
+
   const openExplorer = (txHash: string) => {
     window.open(`${ARCscan_EXPLORER_URL}${txHash}`, "_blank");
   };
