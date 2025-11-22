@@ -31,15 +31,16 @@ function App() {
       <QueryClientProvider client={queryClient}>
         <RainbowKitProvider 
           theme={darkTheme({
-            accentColor: '#2563eb',
+            accentColor: '#3b82f6',
             accentColorForeground: 'white',
             borderRadius: 'medium',
+            overlayBlur: 'small',
           })}
         >
           <TooltipProvider>
-            <div className="min-h-screen bg-background">
+            <div className="dark min-h-screen bg-background">
               <Header />
-              <main className="pb-12">
+              <main className="pb-12 fade-in">
                 <Router />
               </main>
             </div>

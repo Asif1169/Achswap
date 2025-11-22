@@ -663,17 +663,20 @@ export default function Swap() {
   const wusdcToken = tokens.find(t => t.symbol === 'wUSDC');
 
   return (
-    <div className="container max-w-md mx-auto px-4 py-4 md:py-8">
-      <Card className="border-border/40 shadow-xl backdrop-blur-sm bg-card/95">
-        <CardHeader className="space-y-1 pb-4 md:pb-6">
+    <div className="container max-w-md mx-auto px-4 py-4 md:py-8 fade-in">
+      <Card className="border-border/40 shadow-2xl backdrop-blur-xl bg-card/95 card-hover overflow-hidden relative">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-blue-500/5 pointer-events-none"></div>
+        <CardHeader className="space-y-1 pb-4 md:pb-6 relative z-10">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-xl md:text-2xl font-bold">Swap Tokens</CardTitle>
+            <CardTitle className="text-xl md:text-2xl font-bold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text">
+              Swap Tokens
+            </CardTitle>
             <Button 
               data-testid="button-settings"
               size="icon" 
               variant="ghost"
               onClick={() => setShowSettings(true)}
-              className="h-9 w-9 hover:bg-accent/50"
+              className="h-9 w-9 hover:bg-accent/50 hover:rotate-90 transition-all duration-300"
             >
               <Settings className="h-4 w-4" />
             </Button>
@@ -692,14 +695,14 @@ export default function Swap() {
               )}
             </div>
 
-            <div className="relative bg-muted/50 rounded-xl p-4 border border-border/40 hover:border-border/60 transition-colors">
+            <div className="relative bg-gradient-to-br from-muted/50 to-muted/30 rounded-xl p-4 border border-border/40 hover:border-primary/40 transition-all duration-300 glass group">
               <Input
                 data-testid="input-from-amount"
                 type="number"
                 placeholder="0.00"
                 value={fromAmount}
                 onChange={(e) => setFromAmount(e.target.value)}
-                className="border-0 bg-transparent text-xl md:text-2xl font-semibold h-auto p-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+                className="border-0 bg-transparent text-xl md:text-2xl font-semibold h-auto p-0 focus-visible:ring-0 focus-visible:ring-offset-0 transition-all duration-300"
               />
 
               <div className="flex items-center justify-between mt-3">
@@ -707,7 +710,7 @@ export default function Swap() {
                   data-testid="button-select-from-token"
                   onClick={() => setShowFromSelector(true)}
                   variant="secondary"
-                  className="h-10 px-3 md:px-4 hover:bg-secondary/80"
+                  className="h-10 px-3 md:px-4 hover:bg-secondary/80 hover:scale-105 transition-all duration-300 group"
                 >
                   {fromToken ? (
                     <div className="flex items-center gap-2">
@@ -715,7 +718,7 @@ export default function Swap() {
                         <img 
                           src={fromToken.logoURI} 
                           alt={fromToken.symbol} 
-                          className="w-6 h-6 rounded-full" 
+                          className="w-6 h-6 rounded-full group-hover:scale-110 transition-transform duration-300" 
                           onError={(e) => {
                             console.error('Failed to load token logo:', fromToken.logoURI);
                             e.currentTarget.style.display = 'none';
@@ -734,14 +737,14 @@ export default function Swap() {
             </div>
           </div>
 
-          <div className="flex justify-center -my-2">
+          <div className="flex justify-center -my-2 relative z-10">
             <Button
               data-testid="button-swap-direction"
               size="icon"
               variant="ghost"
               onClick={handleSwapTokens}
               disabled={!fromToken || !toToken}
-              className="rounded-full h-10 w-10 bg-card border-4 border-background hover:bg-primary hover:text-primary-foreground transition-all shadow-md disabled:opacity-50"
+              className="rounded-full h-10 w-10 bg-card border-4 border-background hover:bg-primary hover:text-primary-foreground hover:rotate-180 transition-all duration-500 shadow-lg hover:shadow-primary/50 disabled:opacity-50 pulse-glow"
             >
               <ArrowDownUp className="h-4 w-4" />
             </Button>
@@ -757,7 +760,7 @@ export default function Swap() {
               )}
             </div>
 
-            <div className="relative bg-muted/50 rounded-xl p-4 border border-border/40 hover:border-border/60 transition-colors">
+            <div className="relative bg-gradient-to-br from-muted/50 to-muted/30 rounded-xl p-4 border border-border/40 hover:border-primary/40 transition-all duration-300 glass">
               <Input
                 data-testid="input-to-amount"
                 type="number"
@@ -801,7 +804,7 @@ export default function Swap() {
           </div>
 
           {fromToken && toToken && fromAmount && toAmount && (
-            <div className="bg-muted/50 rounded-xl p-4 space-y-2 border border-border/40">
+            <div className="bg-gradient-to-br from-muted/50 to-muted/30 rounded-xl p-4 space-y-2 border border-border/40 glass fade-in">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Exchange Rate</span>
                 <span className="font-medium">
@@ -835,9 +838,10 @@ export default function Swap() {
               data-testid="button-swap"
               onClick={handleSwap}
               disabled={!fromToken || !toToken || !fromAmount || parseFloat(fromAmount) <= 0 || isSwapping}
-              className="w-full h-12 md:h-14 text-base md:text-lg font-semibold bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              className="w-full h-12 md:h-14 text-base md:text-lg font-semibold bg-gradient-to-r from-primary via-blue-500 to-blue-600 hover:from-primary/90 hover:via-blue-500/90 hover:to-blue-600/90 shadow-xl hover:shadow-2xl hover:shadow-primary/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 hover:scale-[1.02] relative overflow-hidden group"
             >
-              {isSwapping ? "Swapping..." : "Swap"}
+              <span className="relative z-10">{isSwapping ? "Swapping..." : "Swap"}</span>
+              <span className="absolute inset-0 bg-gradient-to-r from-blue-600 to-primary opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
             </Button>
           ) : (
             <Button
