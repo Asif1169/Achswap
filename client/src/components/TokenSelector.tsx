@@ -36,7 +36,10 @@ export function TokenSelector({ open, onClose, onSelect, tokens, onImport }: Tok
   }, [tokens, searchQuery]);
 
   const isValidAddress = searchQuery.trim() && isAddress(searchQuery.trim());
-  const showImportButton = isValidAddress && !filteredTokens.find(t => t.address.toLowerCase() === searchQuery.trim().toLowerCase());
+  
+  // Check if token already exists in the list (including default tokens)
+  const tokenExists = isValidAddress && tokens.find(t => t.address.toLowerCase() === searchQuery.trim().toLowerCase());
+  const showImportButton = isValidAddress && !tokenExists;
 
   const handleImport = async () => {
     if (!onImport || !searchQuery.trim()) return;

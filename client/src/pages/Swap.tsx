@@ -64,7 +64,16 @@ export default function Swap() {
   useEffect(() => {
     if (tokens.length === 0) return;
 
-    const params = new URLSearchParams(window.location.search);
+    // Only parse URL once when tokens first load
+    if (fromToken || toToken) return;
+
+    const url = window.location.href;
+    const urlParts = url.split('?');
+    
+    if (urlParts.length < 2) return;
+    
+    const queryString = urlParts[1];
+    const params = new URLSearchParams(queryString);
     
     // Get all query parameters
     const queryKeys = Array.from(params.keys());
@@ -73,22 +82,25 @@ export default function Swap() {
     const pairQuery = queryKeys.find(key => key.includes('+'));
     
     if (pairQuery) {
-      const [fromTokenStr, toTokenStr] = pairQuery.split('+');
-      
-      // Find tokens by symbol or address (case-insensitive)
-      const findToken = (str: string) => {
-        const normalized = str.toLowerCase().trim();
-        return tokens.find(t => 
-          t.symbol.toLowerCase() === normalized || 
-          t.address.toLowerCase() === normalized
-        );
-      };
-      
-      const foundFromToken = findToken(fromTokenStr);
-      const foundToToken = findToken(toTokenStr);
-      
-      if (foundFromToken) setFromToken(foundFromToken);
-      if (foundToToken) setToToken(foundToToken);
+      const parts = pairQuery.split('+');
+      if (parts.length === 2) {
+        const [fromTokenStr, toTokenStr] = parts;
+        
+        // Find tokens by symbol or address (case-insensitive)
+        const findToken = (str: string) => {
+          const normalized = str.toLowerCase().trim();
+          return tokens.find(t => 
+            t.symbol.toLowerCase() === normalized || 
+            t.address.toLowerCase() === normalized
+          );
+        };
+        
+        const foundFromToken = findToken(fromTokenStr);
+        const foundToToken = findToken(toTokenStr);
+        
+        if (foundFromToken) setFromToken(foundFromToken);
+        if (foundToToken) setToToken(foundToToken);
+      }
     }
     
     // Parse amount parameter
@@ -96,7 +108,7 @@ export default function Swap() {
     if (amountParam && !isNaN(parseFloat(amountParam)) && parseFloat(amountParam) > 0) {
       setFromAmount(amountParam);
     }
-  }, [tokens]);
+  }, [tokens, fromToken, toToken]);
 
   // Fetch quote when fromAmount, fromToken, or toToken changes
   useEffect(() => {
@@ -260,12 +272,35 @@ export default function Swap() {
         throw new Error("Invalid token address format");
       }
 
-      // Use Wagmi/ethers for blockchain interaction
-      if (!window.ethereum) {
-        throw new Error("Please connect your wallet to import tokens");
+      // Check if token already exists in default or imported tokens
+      const exists = tokens.find(t => t.address.toLowerCase() === address.toLowerCase());
+      if (exists) {
+        toast({
+          title: "Token already added",
+          description: `${exists.symbol} is already in your token list`,
+        });
+        return exists;
       }
 
-      const provider = new BrowserProvider(window.ethereum);
+      // Use public RPC for token data (no wallet needed)
+      const rpcUrl = 'https://rpc.testnet.arc.network';
+      const provider = new BrowserProvider({
+        request: async ({ method, params }: any) => {
+          const response = await fetch(rpcUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              jsonrpc: '2.0',
+              id: 1,
+              method,
+              params,
+            }),
+          });
+          const data = await response.json();
+          if (data.error) throw new Error(data.error.message);
+          return data.result;
+        },
+      });
       const contract = new Contract(address, ERC20_ABI, provider);
 
       // Fetch token metadata with timeout
@@ -290,12 +325,6 @@ export default function Swap() {
         logoURI: `/img/logos/unknown-token.png`, // Fallback logo
         verified: false,
       };
-
-      // Check if token already exists
-      const exists = tokens.find(t => t.address.toLowerCase() === address.toLowerCase());
-      if (exists) {
-        throw new Error("Token already in list");
-      }
 
       // Save to localStorage
       const imported = localStorage.getItem('importedTokens');
