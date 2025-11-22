@@ -2,9 +2,9 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowDownUp, Settings } from "lucide-react";
+import { ArrowDownUp, Settings, AlertTriangle } from "lucide-react";
 import { TokenSelector } from "@/components/TokenSelector";
-import { WrapUnwrapModal } from "@/components/WrapUnwrapModal";
+import { SwapSettings } from "@/components/SwapSettings";
 import { useAccount, useBalance } from "wagmi";
 import { useToast } from "@/hooks/use-toast";
 import type { Token } from "@shared/schema";
@@ -36,10 +36,14 @@ export default function Swap() {
   const [toAmount, setToAmount] = useState("");
   const [showFromSelector, setShowFromSelector] = useState(false);
   const [showToSelector, setShowToSelector] = useState(false);
-  const [showWrapModal, setShowWrapModal] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [tokens, setTokens] = useState<Token[]>([]);
   const [isSwapping, setIsSwapping] = useState(false);
   const [isLoadingQuote, setIsLoadingQuote] = useState(false);
+  const [slippage, setSlippage] = useState(0.5);
+  const [deadline, setDeadline] = useState(20);
+  const [recipientAddress, setRecipientAddress] = useState("");
+  const [priceImpact, setPriceImpact] = useState<number | null>(null);
 
   const { address, isConnected } = useAccount();
   const { toast } = useToast();
@@ -54,6 +58,7 @@ export default function Swap() {
     const fetchQuote = async () => {
       if (!fromToken || !toToken || !fromAmount || parseFloat(fromAmount) <= 0) {
         setToAmount("");
+        setPriceImpact(null);
         return;
       }
 
@@ -63,6 +68,7 @@ export default function Swap() {
       
       if (isWrap || isUnwrap) {
         setToAmount(fromAmount);
+        setPriceImpact(0);
         return;
       }
 
@@ -134,9 +140,17 @@ export default function Swap() {
         
         const outputAmount = formatUnits(amounts[amounts.length - 1], toToken.decimals);
         setToAmount(parseFloat(outputAmount).toFixed(6));
+
+        // Calculate price impact
+        // Price impact = (1 - (output / expected output at 1:1)) * 100
+        const expectedOutput = parseFloat(fromAmount);
+        const actualOutput = parseFloat(outputAmount);
+        const impact = ((expectedOutput - actualOutput) / expectedOutput) * 100;
+        setPriceImpact(impact);
       } catch (error) {
         console.error('Failed to fetch quote:', error);
         setToAmount("");
+        setPriceImpact(null);
       } finally {
         setIsLoadingQuote(false);
       }
@@ -257,6 +271,7 @@ export default function Swap() {
   const handleWrap = async (amount: string) => {
     if (!address || !window.ethereum || !wusdcToken) return;
 
+    setIsSwapping(true);
     try {
       const provider = new BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
@@ -276,7 +291,6 @@ export default function Swap() {
       const tx = await wusdcContract.deposit({ value: amountBigInt });
       await tx.wait();
 
-      setShowWrapModal(false);
       setFromAmount("");
       setToAmount("");
 
@@ -291,12 +305,15 @@ export default function Swap() {
         description: error.reason || error.message || "Failed to wrap tokens",
         variant: "destructive",
       });
+    } finally {
+      setIsSwapping(false);
     }
   };
 
   const handleUnwrap = async (amount: string) => {
     if (!address || !window.ethereum || !wusdcToken) return;
 
+    setIsSwapping(true);
     try {
       const provider = new BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
@@ -322,7 +339,6 @@ export default function Swap() {
       const tx = await wusdcContract.withdraw(amountBigInt);
       await tx.wait();
 
-      setShowWrapModal(false);
       setFromAmount("");
       setToAmount("");
 
@@ -337,23 +353,30 @@ export default function Swap() {
         description: error.reason || error.message || "Failed to unwrap tokens",
         variant: "destructive",
       });
+    } finally {
+      setIsSwapping(false);
     }
   };
 
   const handleSwap = async () => {
     if (!fromToken || !toToken || !fromAmount || parseFloat(fromAmount) <= 0) return;
 
+    // Check if this is a wrap/unwrap operation
+    const isWrap = fromToken.symbol === 'USDC' && toToken.symbol === 'wUSDC';
+    const isUnwrap = fromToken.symbol === 'wUSDC' && toToken.symbol === 'USDC';
+
+    if (isWrap) {
+      await handleWrap(fromAmount);
+      return;
+    }
+
+    if (isUnwrap) {
+      await handleUnwrap(fromAmount);
+      return;
+    }
+
     setIsSwapping(true);
     try {
-      // Check if this is a wrap/unwrap operation
-      const isWrap = fromToken.symbol === 'USDC' && toToken.symbol === 'wUSDC';
-      const isUnwrap = fromToken.symbol === 'wUSDC' && toToken.symbol === 'USDC';
-
-      if (isWrap || isUnwrap) {
-        setShowWrapModal(true);
-        setIsSwapping(false);
-        return;
-      }
 
       if (!address || !window.ethereum) {
         throw new Error("Please connect your wallet");
@@ -433,10 +456,15 @@ export default function Swap() {
         }
       }
       
-      const amountOutMin = amounts[amounts.length - 1] * 95n / 100n; // 5% slippage tolerance
+      const amountOutMin = amounts[amounts.length - 1] * BigInt(Math.floor((100 - slippage) * 100)) / 10000n;
 
-      // Deadline: 20 minutes from now
-      const deadline = Math.floor(Date.now() / 1000) + 60 * 20;
+      // Deadline from settings
+      const deadlineTimestamp = Math.floor(Date.now() / 1000) + 60 * deadline;
+      
+      // Use recipient address if provided, otherwise use connected wallet
+      const recipient = recipientAddress && recipientAddress.startsWith('0x') && recipientAddress.length === 42 
+        ? recipientAddress 
+        : address;
 
       toast({
         title: "Swap initiated",
@@ -450,8 +478,8 @@ export default function Swap() {
         tx = await router.swapExactETHForTokens(
           amountOutMin,
           path,
-          address,
-          deadline,
+          recipient,
+          deadlineTimestamp,
           { value: amountIn }
         );
       } else if (isToNative) {
@@ -469,8 +497,8 @@ export default function Swap() {
           amountIn,
           amountOutMin,
           path,
-          address,
-          deadline
+          recipient,
+          deadlineTimestamp
         );
       } else {
         // Swap tokens for tokens
@@ -487,8 +515,8 @@ export default function Swap() {
           amountIn,
           amountOutMin,
           path,
-          address,
-          deadline
+          recipient,
+          deadlineTimestamp
         );
       }
 
@@ -543,6 +571,7 @@ export default function Swap() {
               data-testid="button-settings"
               size="icon" 
               variant="ghost"
+              onClick={() => setShowSettings(true)}
               className="h-9 w-9 hover:bg-accent/50"
             >
               <Settings className="h-4 w-4" />
@@ -670,6 +699,36 @@ export default function Swap() {
             </div>
           </div>
 
+          {fromToken && toToken && fromAmount && toAmount && (
+            <div className="bg-muted/50 rounded-xl p-4 space-y-2 border border-border/40">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Exchange Rate</span>
+                <span className="font-medium">
+                  1 {fromToken.symbol} = {(parseFloat(toAmount) / parseFloat(fromAmount)).toFixed(6)} {toToken.symbol}
+                </span>
+              </div>
+              {priceImpact !== null && (
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Price Impact</span>
+                  <span className={`font-medium flex items-center gap-1 ${
+                    priceImpact > 5 ? 'text-red-500' : 
+                    priceImpact > 2 ? 'text-orange-500' : 
+                    'text-green-500'
+                  }`}>
+                    {priceImpact > 5 && <AlertTriangle className="h-3 w-3" />}
+                    {priceImpact.toFixed(2)}%
+                  </span>
+                </div>
+              )}
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Minimum Received</span>
+                <span className="font-medium">
+                  {(parseFloat(toAmount) * (100 - slippage) / 100).toFixed(6)} {toToken.symbol}
+                </span>
+              </div>
+            </div>
+          )}
+
           {isConnected ? (
             <Button
               data-testid="button-swap"
@@ -713,16 +772,16 @@ export default function Swap() {
         onImport={handleImportToken}
       />
 
-      {usdcToken && wusdcToken && (
-        <WrapUnwrapModal
-          open={showWrapModal}
-          onClose={() => setShowWrapModal(false)}
-          usdcToken={usdcToken}
-          wusdcToken={wusdcToken}
-          onWrap={handleWrap}
-          onUnwrap={handleUnwrap}
-        />
-      )}
+      <SwapSettings
+        open={showSettings}
+        onClose={() => setShowSettings(false)}
+        slippage={slippage}
+        onSlippageChange={setSlippage}
+        deadline={deadline}
+        onDeadlineChange={setDeadline}
+        recipientAddress={recipientAddress}
+        onRecipientAddressChange={setRecipientAddress}
+      />
     </div>
   );
 }
