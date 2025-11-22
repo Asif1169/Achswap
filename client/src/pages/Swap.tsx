@@ -394,10 +394,6 @@ export default function Swap() {
         description: `Swapping ${fromAmount} ${fromToken.symbol} for ${toToken.symbol}`,
       });
 
-      // Handle different swap scenarios
-      const isFromNative = fromToken.address === "0x0000000000000000000000000000000000000000";
-      const isToNative = toToken.address === "0x0000000000000000000000000000000000000000";
-
       let tx;
 
       if (isFromNative) {
