@@ -284,7 +284,9 @@ export default function RemoveLiquidity() {
       const allowance = await pairContract.allowance(address, ROUTER_ADDRESS);
       if (allowance < liquidityToRemove) {
         console.log('Approving router to spend LP tokens:', { liquidityToRemove: liquidityToRemove.toString(), allowance: allowance.toString() });
-        const approveTx = await pairContract.approve(ROUTER_ADDRESS, liquidityToRemove);
+        const approveGasEstimate = await pairContract.approve.estimateGas(ROUTER_ADDRESS, liquidityToRemove);
+        const approveGasLimit = (approveGasEstimate * 150n) / 100n;
+        const approveTx = await pairContract.approve(ROUTER_ADDRESS, liquidityToRemove, { gasLimit: approveGasLimit });
         await approveTx.wait();
       }
 
@@ -328,7 +330,7 @@ export default function RemoveLiquidity() {
       if (isTokenANative || isTokenBNative) {
         const token = isTokenANative ? tokenBAddress : tokenAAddress;
         console.log('Calling removeLiquidityETH with:', { token, liquidity: liquidityToRemove.toString() });
-        tx = await router.removeLiquidityETH(
+        const gasEstimate = await router.removeLiquidityETH.estimateGas(
           token,
           liquidityToRemove,
           amountAMin,
@@ -336,9 +338,19 @@ export default function RemoveLiquidity() {
           address,
           deadline
         );
+        const gasLimit = (gasEstimate * 150n) / 100n;
+        tx = await router.removeLiquidityETH(
+          token,
+          liquidityToRemove,
+          amountAMin,
+          amountBMin,
+          address,
+          deadline,
+          { gasLimit }
+        );
       } else {
         console.log('Calling removeLiquidity with:', { tokenAAddress, tokenBAddress, liquidity: liquidityToRemove.toString() });
-        tx = await router.removeLiquidity(
+        const gasEstimate = await router.removeLiquidity.estimateGas(
           tokenAAddress,
           tokenBAddress,
           liquidityToRemove,
@@ -346,6 +358,17 @@ export default function RemoveLiquidity() {
           amountBMin,
           address,
           deadline
+        );
+        const gasLimit = (gasEstimate * 150n) / 100n;
+        tx = await router.removeLiquidity(
+          tokenAAddress,
+          tokenBAddress,
+          liquidityToRemove,
+          amountAMin,
+          amountBMin,
+          address,
+          deadline,
+          { gasLimit }
         );
       }
 

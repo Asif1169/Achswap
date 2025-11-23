@@ -402,7 +402,9 @@ export default function AddLiquidity() {
         const allowance = await tokenContract.allowance(address, ROUTER_ADDRESS);
 
         if (allowance < tokenAmount) {
-          const approveTx = await tokenContract.approve(ROUTER_ADDRESS, tokenAmount);
+          const approveGasEstimate = await tokenContract.approve.estimateGas(ROUTER_ADDRESS, tokenAmount);
+          const approveGasLimit = (approveGasEstimate * 150n) / 100n;
+          const approveTx = await tokenContract.approve(ROUTER_ADDRESS, tokenAmount, { gasLimit: approveGasLimit });
           const approveReceipt = await approveTx.wait();
 
           // Refetch balances after approval
@@ -426,7 +428,7 @@ export default function AddLiquidity() {
           });
         }
 
-        tx = await router.addLiquidityETH(
+        const gasEstimate = await router.addLiquidityETH.estimateGas(
           tokenAddress,
           tokenAmount,
           tokenAmountMin,
@@ -434,6 +436,16 @@ export default function AddLiquidity() {
           address,
           deadline,
           { value: ethAmount }
+        );
+        const gasLimit = (gasEstimate * 150n) / 100n;
+        tx = await router.addLiquidityETH(
+          tokenAddress,
+          tokenAmount,
+          tokenAmountMin,
+          ethAmountMin,
+          address,
+          deadline,
+          { value: ethAmount, gasLimit }
         );
       } else {
         // Add liquidity with two ERC20 tokens
@@ -445,7 +457,9 @@ export default function AddLiquidity() {
         const allowanceB = await tokenBContract.allowance(address, ROUTER_ADDRESS);
 
         if (allowanceA < amountADesired) {
-          const approveTx = await tokenAContract.approve(ROUTER_ADDRESS, amountADesired);
+          const approveGasEstimate = await tokenAContract.approve.estimateGas(ROUTER_ADDRESS, amountADesired);
+          const approveGasLimit = (approveGasEstimate * 150n) / 100n;
+          const approveTx = await tokenAContract.approve(ROUTER_ADDRESS, amountADesired, { gasLimit: approveGasLimit });
           const approveReceipt = await approveTx.wait();
 
           // Refetch balances after approval
@@ -470,7 +484,9 @@ export default function AddLiquidity() {
         }
 
         if (allowanceB < amountBDesired) {
-          const approveTx = await tokenBContract.approve(ROUTER_ADDRESS, amountBDesired);
+          const approveGasEstimate = await tokenBContract.approve.estimateGas(ROUTER_ADDRESS, amountBDesired);
+          const approveGasLimit = (approveGasEstimate * 150n) / 100n;
+          const approveTx = await tokenBContract.approve(ROUTER_ADDRESS, amountBDesired, { gasLimit: approveGasLimit });
           const approveReceipt = await approveTx.wait();
 
           // Refetch balances after approval
@@ -494,7 +510,7 @@ export default function AddLiquidity() {
           });
         }
 
-        tx = await router.addLiquidity(
+        const gasEstimate = await router.addLiquidity.estimateGas(
           tokenAAddress,
           tokenBAddress,
           amountADesired,
@@ -503,6 +519,18 @@ export default function AddLiquidity() {
           amountBMin,
           address,
           deadline
+        );
+        const gasLimit = (gasEstimate * 150n) / 100n;
+        tx = await router.addLiquidity(
+          tokenAAddress,
+          tokenBAddress,
+          amountADesired,
+          amountBDesired,
+          amountAMin,
+          amountBMin,
+          address,
+          deadline,
+          { gasLimit }
         );
       }
 

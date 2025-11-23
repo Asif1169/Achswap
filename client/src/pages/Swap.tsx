@@ -365,7 +365,10 @@ export default function Swap() {
       });
 
       // Call deposit with the amount as value (native token transfer)
-      const tx = await wusdcContract.deposit({ value: amountBigInt });
+      // Estimate gas and add 50% buffer
+      const gasEstimate = await wusdcContract.deposit.estimateGas({ value: amountBigInt });
+      const gasLimit = (gasEstimate * 150n) / 100n;
+      const tx = await wusdcContract.deposit({ value: amountBigInt, gasLimit });
       const receipt = await tx.wait();
 
       // Refetch balances
@@ -423,12 +426,16 @@ export default function Swap() {
 
       // If allowance is insufficient, approve first
       if (allowance < amountBigInt) {
-        const approveTx = await wusdcContract.approve(wusdcToken.address, amountBigInt);
+        const approveGasEstimate = await wusdcContract.approve.estimateGas(wusdcToken.address, amountBigInt);
+        const approveGasLimit = (approveGasEstimate * 150n) / 100n;
+        const approveTx = await wusdcContract.approve(wusdcToken.address, amountBigInt, { gasLimit: approveGasLimit });
         await approveTx.wait();
       }
 
-      // Call withdraw
-      const tx = await wusdcContract.withdraw(amountBigInt);
+      // Call withdraw with gas buffer
+      const gasEstimate = await wusdcContract.withdraw.estimateGas(amountBigInt);
+      const gasLimit = (gasEstimate * 150n) / 100n;
+      const tx = await wusdcContract.withdraw(amountBigInt, { gasLimit });
       const receipt = await tx.wait();
 
       // Refetch balances
@@ -568,12 +575,20 @@ export default function Swap() {
 
       if (isFromNative) {
         // Swap native USDC for tokens
-        tx = await router.swapExactETHForTokens(
+        const gasEstimate = await router.swapExactETHForTokens.estimateGas(
           amountOutMin,
           path,
           recipient,
           deadlineTimestamp,
           { value: amountIn }
+        );
+        const gasLimit = (gasEstimate * 150n) / 100n;
+        tx = await router.swapExactETHForTokens(
+          amountOutMin,
+          path,
+          recipient,
+          deadlineTimestamp,
+          { value: amountIn, gasLimit }
         );
       } else if (isToNative) {
         // Swap tokens for native USDC
@@ -582,7 +597,9 @@ export default function Swap() {
         const allowance = await tokenContract.allowance(address, ROUTER_ADDRESS);
 
         if (allowance < amountIn) {
-          const approveTx = await tokenContract.approve(ROUTER_ADDRESS, amountIn);
+          const approveGasEstimate = await tokenContract.approve.estimateGas(ROUTER_ADDRESS, amountIn);
+          const approveGasLimit = (approveGasEstimate * 150n) / 100n;
+          const approveTx = await tokenContract.approve(ROUTER_ADDRESS, amountIn, { gasLimit: approveGasLimit });
           const approveReceipt = await approveTx.wait();
 
           // Refetch balances after approval
@@ -606,12 +623,21 @@ export default function Swap() {
           });
         }
 
-        tx = await router.swapExactTokensForETH(
+        const gasEstimate = await router.swapExactTokensForETH.estimateGas(
           amountIn,
           amountOutMin,
           path,
           recipient,
           deadlineTimestamp
+        );
+        const gasLimit = (gasEstimate * 150n) / 100n;
+        tx = await router.swapExactTokensForETH(
+          amountIn,
+          amountOutMin,
+          path,
+          recipient,
+          deadlineTimestamp,
+          { gasLimit }
         );
       } else {
         // Swap tokens for tokens
@@ -620,7 +646,9 @@ export default function Swap() {
         const allowance = await tokenContract.allowance(address, ROUTER_ADDRESS);
 
         if (allowance < amountIn) {
-          const approveTx = await tokenContract.approve(ROUTER_ADDRESS, amountIn);
+          const approveGasEstimate = await tokenContract.approve.estimateGas(ROUTER_ADDRESS, amountIn);
+          const approveGasLimit = (approveGasEstimate * 150n) / 100n;
+          const approveTx = await tokenContract.approve(ROUTER_ADDRESS, amountIn, { gasLimit: approveGasLimit });
           const approveReceipt = await approveTx.wait();
 
           // Refetch balances after approval
@@ -644,12 +672,21 @@ export default function Swap() {
           });
         }
 
-        tx = await router.swapExactTokensForTokens(
+        const gasEstimate = await router.swapExactTokensForTokens.estimateGas(
           amountIn,
           amountOutMin,
           path,
           recipient,
           deadlineTimestamp
+        );
+        const gasLimit = (gasEstimate * 150n) / 100n;
+        tx = await router.swapExactTokensForTokens(
+          amountIn,
+          amountOutMin,
+          path,
+          recipient,
+          deadlineTimestamp,
+          { gasLimit }
         );
       }
 
