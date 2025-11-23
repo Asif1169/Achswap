@@ -4,12 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { ArrowDown } from "lucide-react";
 import { TokenSelector } from "@/components/TokenSelector";
-import { useAccount, useBalance } from "wagmi";
+import { useAccount, useBalance, useChainId } from "wagmi";
 import { useToast } from "@/hooks/use-toast";
 import type { Token } from "@shared/schema";
 import { Contract, BrowserProvider, formatUnits, parseUnits } from "ethers";
-import { defaultTokens } from "@/data/tokens";
+import { defaultTokens, getTokensByChainId } from "@/data/tokens";
 import { formatAmount, parseAmount } from "@/lib/decimal-utils";
+import { getContractsForChain } from "@/lib/contracts";
 
 const ERC20_ABI = [
   "function name() view returns (string)",
@@ -42,11 +43,15 @@ export default function RemoveLiquidity() {
   const [amountBToReceive, setAmountBToReceive] = useState<string>("0");
 
   const { address, isConnected } = useAccount();
+  const chainId = useChainId();
   const { toast } = useToast();
+
+  // Get chain-specific contracts
+  const contracts = chainId ? getContractsForChain(chainId) : null;
 
   useEffect(() => {
     loadTokens();
-  }, []);
+  }, [chainId]);
 
   useEffect(() => {
     if (tokenA && tokenB && address && tokens.length > 0) {
@@ -78,13 +83,14 @@ export default function RemoveLiquidity() {
         const amount0 = liquidityToRemove * reserve0 / totalSupply;
         const amount1 = liquidityToRemove * reserve1 / totalSupply;
 
-        // Get wUSDC token for proper address handling
-        const wusdcToken = tokens.find(t => t.symbol === 'wUSDC');
-        const wusdcAddress = wusdcToken?.address || '';
+        // Get wrapped token for proper address handling (chain-specific)
+        const wrappedSymbol = chainId === 2201 ? 'wUSDT' : 'wUSDC';
+        const wrappedToken = tokens.find(t => t.symbol === wrappedSymbol);
+        const wrappedAddress = wrappedToken?.address || '';
         
-        // Determine which token is token0 - convert native USDC to wUSDC for comparison
-        const tokenAAddress = tokenA.address === "0x0000000000000000000000000000000000000000" ? wusdcAddress : tokenA.address;
-        const tokenBAddress = tokenB.address === "0x0000000000000000000000000000000000000000" ? wusdcAddress : tokenB.address;
+        // Determine which token is token0 - convert native to wrapped for comparison
+        const tokenAAddress = tokenA.address === "0x0000000000000000000000000000000000000000" ? wrappedAddress : tokenA.address;
+        const tokenBAddress = tokenB.address === "0x0000000000000000000000000000000000000000" ? wrappedAddress : tokenB.address;
         const isTokenAToken0 = tokenAAddress.toLowerCase() === token0Address.toLowerCase();
 
         // Reserves are in the token's native decimals, so we can format directly
@@ -107,16 +113,22 @@ export default function RemoveLiquidity() {
 
   const loadTokens = async () => {
     try {
+      if (!chainId) return;
+
+      // Filter tokens by current chain ID
+      const chainTokens = getTokensByChainId(chainId);
+
       const imported = localStorage.getItem('importedTokens');
       const importedTokens = imported ? JSON.parse(imported) : [];
+      const chainImportedTokens = importedTokens.filter((t: Token) => t.chainId === chainId);
 
       // Process tokens to add fallback logos
-      const processedDefaultTokens = defaultTokens.map(token => ({
+      const processedDefaultTokens = chainTokens.map(token => ({
         ...token,
         logoURI: token.logoURI || `/img/logos/unknown-token.png`
       }));
 
-      const processedImportedTokens = importedTokens.map((token: Token) => ({
+      const processedImportedTokens = chainImportedTokens.map((token: Token) => ({
         ...token,
         logoURI: token.logoURI || `/img/logos/unknown-token.png`
       }));
@@ -153,6 +165,8 @@ export default function RemoveLiquidity() {
         timeout
       ]) as [string, string, bigint];
 
+      if (!chainId) throw new Error("Chain ID not available");
+
       const newToken: Token = {
         address,
         name,
@@ -160,6 +174,7 @@ export default function RemoveLiquidity() {
         decimals: Number(decimals),
         logoURI: "/img/logos/unknown-token.png",
         verified: false,
+        chainId,
       };
 
       const exists = tokens.find(t => t.address.toLowerCase() === address.toLowerCase());
@@ -200,16 +215,17 @@ export default function RemoveLiquidity() {
       if (!window.ethereum || !tokenA || !tokenB) return;
 
       const provider = new BrowserProvider(window.ethereum);
-      const FACTORY_ADDRESS = "0x7cC023C7184810B84657D55c1943eBfF8603B72B";
+      if (!contracts) return;
       const FACTORY_ABI = [
         "function getPair(address tokenA, address tokenB) view returns (address pair)"
       ];
 
-      const factory = new Contract(FACTORY_ADDRESS, FACTORY_ABI, provider);
+      const factory = new Contract(contracts.factory, FACTORY_ABI, provider);
       
-      // Get wUSDC for native USDC conversion
-      const wusdcToken = tokens.find(t => t.symbol === 'wUSDC');
-      const wusdcAddress = wusdcToken?.address;
+      // Get wrapped token for native conversion (chain-specific)
+      const wrappedSymbol = chainId === 2201 ? 'wUSDT' : 'wUSDC';
+      const wrappedToken = tokens.find(t => t.symbol === wrappedSymbol);
+      const wusdcAddress = wrappedToken?.address;
 
       if (!wusdcAddress) {
         console.error('wUSDC token not found');
@@ -224,7 +240,7 @@ export default function RemoveLiquidity() {
       const tokenAAddress = isTokenANative ? wusdcAddress : tokenA.address;
       const tokenBAddress = isTokenBNative ? wusdcAddress : tokenB.address;
 
-      console.log('Looking up pair:', { tokenAAddress, tokenBAddress, isTokenANative, isTokenBNative, factoryAddress: FACTORY_ADDRESS });
+      console.log('Looking up pair:', { tokenAAddress, tokenBAddress, isTokenANative, isTokenBNative, factoryAddress: contracts.factory });
       const pair = await factory.getPair(tokenAAddress, tokenBAddress);
       console.log('Pair found:', pair);
 
@@ -268,25 +284,25 @@ export default function RemoveLiquidity() {
       const provider = new BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
 
-      const ROUTER_ADDRESS = "0xB92428D440c335546b69138F7fAF689F5ba8D436";
+      if (!contracts) throw new Error("Chain contracts not configured");
       const ROUTER_ABI = [
         "function removeLiquidity(address tokenA, address tokenB, uint liquidity, uint amountAMin, uint amountBMin, address to, uint deadline) external returns (uint amountA, uint amountB)",
         "function removeLiquidityETH(address token, uint liquidity, uint amountTokenMin, uint amountETHMin, address to, uint deadline) external returns (uint amountToken, uint amountETH)"
       ];
 
-      const router = new Contract(ROUTER_ADDRESS, ROUTER_ABI, signer);
+      const router = new Contract(contracts.router, ROUTER_ABI, signer);
       const pairContract = new Contract(pairAddress, ERC20_ABI, signer);
 
       // Calculate liquidity to remove based on percentage (use raw balance value)
       const liquidityToRemove = lpBalanceRaw * BigInt(percentage[0]) / 100n;
 
       // Approve router to spend LP tokens
-      const allowance = await pairContract.allowance(address, ROUTER_ADDRESS);
+      const allowance = await pairContract.allowance(address, contracts.router);
       if (allowance < liquidityToRemove) {
         console.log('Approving router to spend LP tokens:', { liquidityToRemove: liquidityToRemove.toString(), allowance: allowance.toString() });
-        const approveGasEstimate = await pairContract.approve.estimateGas(ROUTER_ADDRESS, liquidityToRemove);
+        const approveGasEstimate = await pairContract.approve.estimateGas(contracts.router, liquidityToRemove);
         const approveGasLimit = (approveGasEstimate * 150n) / 100n;
-        const approveTx = await pairContract.approve(ROUTER_ADDRESS, liquidityToRemove, { gasLimit: approveGasLimit });
+        const approveTx = await pairContract.approve(contracts.router, liquidityToRemove, { gasLimit: approveGasLimit });
         await approveTx.wait();
       }
 

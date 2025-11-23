@@ -4,12 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, ExternalLink } from "lucide-react";
 import { TokenSelector } from "@/components/TokenSelector";
-import { useAccount, useBalance } from "wagmi";
+import { useAccount, useBalance, useChainId } from "wagmi";
 import { useToast } from "@/hooks/use-toast";
 import type { Token } from "@shared/schema";
 import { Contract, BrowserProvider, formatUnits, parseUnits } from "ethers";
-import { defaultTokens } from "@/data/tokens";
+import { defaultTokens, getTokensByChainId } from "@/data/tokens";
 import { formatAmount, parseAmount, calculateRatio } from "@/lib/decimal-utils";
+import { getContractsForChain } from "@/lib/contracts";
 
 const ERC20_ABI = [
   "function name() view returns (string)",
@@ -34,11 +35,11 @@ export default function AddLiquidity() {
   const [isLoadingPair, setIsLoadingPair] = useState(false);
 
   const { address, isConnected } = useAccount();
+  const chainId = useChainId();
   const { toast } = useToast();
 
-  const FACTORY_ADDRESS = "0x7cC023C7184810B84657D55c1943eBfF8603B72B";
-  const ROUTER_ADDRESS = "0xB92428D440c335546b69138F7fAF689F5ba8D436";
-  const ARCscan_EXPLORER_URL = "https://testnet.arcscan.app/tx/";
+  // Get chain-specific contracts
+  const contracts = chainId ? getContractsForChain(chainId) : null;
 
   const FACTORY_ABI = [
     "function getPair(address tokenA, address tokenB) external view returns (address pair)"
@@ -55,10 +56,12 @@ export default function AddLiquidity() {
 
   useEffect(() => {
     loadTokens();
-  }, []);
+  }, [chainId]);
 
   const openExplorer = (txHash: string) => {
-    window.open(`${ARCscan_EXPLORER_URL}${txHash}`, "_blank");
+    if (contracts) {
+      window.open(`${contracts.explorer}${txHash}`, "_blank");
+    }
   };
 
   // Check if pair exists and fetch reserves
@@ -73,15 +76,18 @@ export default function AddLiquidity() {
 
       setIsLoadingPair(true);
       try {
+        if (!contracts) return;
+
         const provider = new BrowserProvider(window.ethereum);
-        const factory = new Contract(FACTORY_ADDRESS, FACTORY_ABI, provider);
+        const factory = new Contract(contracts.factory, FACTORY_ABI, provider);
 
-        // Get wUSDC for native USDC conversion
-        const wusdcToken = tokens.find(t => t.symbol === 'wUSDC');
-        const wusdcAddress = wusdcToken?.address;
+        // Get wrapped token for native conversion (wUSDC for ARC, wUSDT for Stable)
+        const wrappedSymbol = chainId === 2201 ? 'wUSDT' : 'wUSDC';
+        const wrappedToken = tokens.find(t => t.symbol === wrappedSymbol);
+        const wrappedAddress = wrappedToken?.address;
 
-        if (!wusdcAddress) {
-          console.error('wUSDC token not found');
+        if (!wrappedAddress) {
+          console.error(`${wrappedSymbol} token not found`);
           setPairExists(false);
           setReserveA(0n);
           setReserveB(0n);
@@ -89,13 +95,13 @@ export default function AddLiquidity() {
           return;
         }
 
-        // Convert native USDC to wUSDC for pool lookup
+        // Convert native token to wrapped for pool lookup
         const isTokenANative = tokenA.address === "0x0000000000000000000000000000000000000000";
         const isTokenBNative = tokenB.address === "0x0000000000000000000000000000000000000000";
-        const tokenAAddress = isTokenANative ? wusdcAddress : tokenA.address;
-        const tokenBAddress = isTokenBNative ? wusdcAddress : tokenB.address;
+        const tokenAAddress = isTokenANative ? wrappedAddress : tokenA.address;
+        const tokenBAddress = isTokenBNative ? wrappedAddress : tokenB.address;
 
-        console.log('Checking pair:', { tokenAAddress, tokenBAddress, isTokenANative, isTokenBNative, factoryAddress: FACTORY_ADDRESS });
+        console.log('Checking pair:', { tokenAAddress, tokenBAddress, isTokenANative, isTokenBNative, factoryAddress: contracts.factory });
 
         const pairAddress = await factory.getPair(tokenAAddress, tokenBAddress);
         console.log('Pair lookup result:', pairAddress);
@@ -171,16 +177,22 @@ export default function AddLiquidity() {
 
   const loadTokens = async () => {
     try {
+      if (!chainId) return;
+
+      // Filter tokens by current chain ID
+      const chainTokens = getTokensByChainId(chainId);
+
       const imported = localStorage.getItem('importedTokens');
       const importedTokens = imported ? JSON.parse(imported) : [];
+      const chainImportedTokens = importedTokens.filter((t: Token) => t.chainId === chainId);
 
       // Process tokens to add fallback logos
-      const processedDefaultTokens = defaultTokens.map(token => ({
+      const processedDefaultTokens = chainTokens.map(token => ({
         ...token,
         logoURI: token.logoURI || `/img/logos/unknown-token.png`
       }));
 
-      const processedImportedTokens = importedTokens.map((token: Token) => ({
+      const processedImportedTokens = chainImportedTokens.map((token: Token) => ({
         ...token,
         logoURI: token.logoURI || `/img/logos/unknown-token.png`
       }));
@@ -207,8 +219,10 @@ export default function AddLiquidity() {
         return exists;
       }
 
-      // Use public RPC for token data (no wallet needed)
-      const rpcUrl = 'https://rpc.testnet.arc.network';
+      // Use public RPC for token data (no wallet needed) - chain-specific
+      const rpcUrl = chainId === 2201 
+        ? 'https://rpc.testnet.stable.xyz/' 
+        : 'https://rpc.testnet.arc.network';
       const provider = new BrowserProvider({
         request: async ({ method, params }: any) => {
           const response = await fetch(rpcUrl, {
@@ -241,6 +255,8 @@ export default function AddLiquidity() {
         timeout
       ]) as [string, string, bigint];
 
+      if (!chainId) throw new Error("Chain ID not available");
+
       const newToken: Token = {
         address,
         name,
@@ -248,6 +264,7 @@ export default function AddLiquidity() {
         decimals: Number(decimals),
         logoURI: "/img/logos/unknown-token.png",
         verified: false,
+        chainId,
       };
 
       const imported = localStorage.getItem('importedTokens');
@@ -341,7 +358,8 @@ export default function AddLiquidity() {
       const provider = new BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
 
-      const router = new Contract(ROUTER_ADDRESS, ROUTER_ABI, signer);
+      if (!contracts) throw new Error("Chain contracts not configured");
+      const router = new Contract(contracts.router, ROUTER_ABI, signer);
 
       // For new pools, use 0 minimum amounts. For existing pools, use 5% slippage tolerance
       let amountAMin: bigint;
@@ -399,12 +417,12 @@ export default function AddLiquidity() {
 
         // Approve token (if not native)
         const tokenContract = new Contract(token.address, ERC20_ABI, signer);
-        const allowance = await tokenContract.allowance(address, ROUTER_ADDRESS);
+        const allowance = await tokenContract.allowance(address, contracts.router);
 
         if (allowance < tokenAmount) {
-          const approveGasEstimate = await tokenContract.approve.estimateGas(ROUTER_ADDRESS, tokenAmount);
+          const approveGasEstimate = await tokenContract.approve.estimateGas(contracts.router, tokenAmount);
           const approveGasLimit = (approveGasEstimate * 150n) / 100n;
-          const approveTx = await tokenContract.approve(ROUTER_ADDRESS, tokenAmount, { gasLimit: approveGasLimit });
+          const approveTx = await tokenContract.approve(contracts.router, tokenAmount, { gasLimit: approveGasLimit });
           const approveReceipt = await approveTx.wait();
 
           // Refetch balances after approval
@@ -453,13 +471,13 @@ export default function AddLiquidity() {
         const tokenAContract = new Contract(tokenAAddress, ERC20_ABI, signer);
         const tokenBContract = new Contract(tokenBAddress, ERC20_ABI, signer);
 
-        const allowanceA = await tokenAContract.allowance(address, ROUTER_ADDRESS);
-        const allowanceB = await tokenBContract.allowance(address, ROUTER_ADDRESS);
+        const allowanceA = await tokenAContract.allowance(address, contracts.router);
+        const allowanceB = await tokenBContract.allowance(address, contracts.router);
 
         if (allowanceA < amountADesired) {
-          const approveGasEstimate = await tokenAContract.approve.estimateGas(ROUTER_ADDRESS, amountADesired);
+          const approveGasEstimate = await tokenAContract.approve.estimateGas(contracts.router, amountADesired);
           const approveGasLimit = (approveGasEstimate * 150n) / 100n;
-          const approveTx = await tokenAContract.approve(ROUTER_ADDRESS, amountADesired, { gasLimit: approveGasLimit });
+          const approveTx = await tokenAContract.approve(contracts.router, amountADesired, { gasLimit: approveGasLimit });
           const approveReceipt = await approveTx.wait();
 
           // Refetch balances after approval
@@ -484,9 +502,9 @@ export default function AddLiquidity() {
         }
 
         if (allowanceB < amountBDesired) {
-          const approveGasEstimate = await tokenBContract.approve.estimateGas(ROUTER_ADDRESS, amountBDesired);
+          const approveGasEstimate = await tokenBContract.approve.estimateGas(contracts.router, amountBDesired);
           const approveGasLimit = (approveGasEstimate * 150n) / 100n;
-          const approveTx = await tokenBContract.approve(ROUTER_ADDRESS, amountBDesired, { gasLimit: approveGasLimit });
+          const approveTx = await tokenBContract.approve(contracts.router, amountBDesired, { gasLimit: approveGasLimit });
           const approveReceipt = await approveTx.wait();
 
           // Refetch balances after approval

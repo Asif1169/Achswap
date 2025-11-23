@@ -305,6 +305,8 @@ export default function Swap() {
         timeout
       ]) as [string, string, bigint];
 
+      if (!chainId) throw new Error("Chain ID not available");
+
       const newToken: Token = {
         address,
         name,
@@ -312,6 +314,7 @@ export default function Swap() {
         decimals: Number(decimals),
         logoURI: `/img/logos/unknown-token.png`, // Fallback logo
         verified: false,
+        chainId,
       };
 
       // Save to localStorage
