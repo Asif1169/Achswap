@@ -100,7 +100,7 @@ export default function Swap() {
       setIsLoadingQuote(true);
       try {
         const provider = new BrowserProvider(window.ethereum);
-        const ROUTER_ADDRESS = "0x173A08F94C13a4A64a598361165e84Df871aEa9E";
+        const ROUTER_ADDRESS = "0xB92428D440c335546b69138F7fAF689F5ba8D436";
         const ROUTER_ABI = [
           "function getAmountsOut(uint amountIn, address[] memory path) public view returns (uint[] memory amounts)"
         ];
@@ -499,7 +499,7 @@ export default function Swap() {
       const provider = new BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
 
-      const ROUTER_ADDRESS = "0x173A08F94C13a4A64a598361165e84Df871aEa9E";
+      const ROUTER_ADDRESS = "0xB92428D440c335546b69138F7fAF689F5ba8D436";
       const ROUTER_ABI = [
         "function getAmountsOut(uint amountIn, address[] memory path) public view returns (uint[] memory amounts)",
         "function swapExactTokensForTokens(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) external returns (uint[] memory amounts)",
