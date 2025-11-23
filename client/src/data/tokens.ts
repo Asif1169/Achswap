@@ -38,7 +38,7 @@ const stableTestnetTokens: Token[] = [
     name: "gUSDT",
     symbol: "gUSDT",
     decimals: 18,
-    logoURI: "/img/logos/stable-testnet/gusdt.png",
+    logoURI: "/img/logos/gusdt.png",
     verified: true,
     chainId: 2201
   },
@@ -47,7 +47,7 @@ const stableTestnetTokens: Token[] = [
     name: "Wrapped gUSDT",
     symbol: "wUSDT",
     decimals: 18,
-    logoURI: "/img/logos/stable-testnet/wusdt.png",
+    logoURI: "/img/logos/wusdt.png",
     verified: true,
     chainId: 2201
   },
