@@ -2,12 +2,14 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowDownUp, Settings, AlertTriangle, ExternalLink, HelpCircle } from "lucide-react";
+import { ArrowDownUp, Settings, AlertTriangle, ExternalLink, HelpCircle, ChevronDown, Bell, ArrowRight } from "lucide-react";
 import { TokenSelector } from "@/components/TokenSelector";
 import { SwapSettings } from "@/components/SwapSettings";
+import { TransactionHistory } from "@/components/TransactionHistory";
 import { useAccount, useBalance, useChainId } from "wagmi";
 import { useToast } from "@/hooks/use-toast";
 import type { Token } from "@shared/schema";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Contract, BrowserProvider, formatUnits, parseUnits } from "ethers";
 import { defaultTokens, getTokensByChainId } from "@/data/tokens";
 import { formatAmount, parseAmount } from "@/lib/decimal-utils";
@@ -47,6 +49,9 @@ export default function Swap() {
   const [recipientAddress, setRecipientAddress] = useState("");
   const [priceImpact, setPriceImpact] = useState<number | null>(null);
   const [quoteRefreshInterval, setQuoteRefreshInterval] = useState(30);
+  const [routingPath, setRoutingPath] = useState<string[]>([]);
+  const [showTransactionHistory, setShowTransactionHistory] = useState(false);
+  const [isPriceImpactCollapsed, setIsPriceImpactCollapsed] = useState(true);
 
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
@@ -150,6 +155,9 @@ export default function Swap() {
           // Multi-hop through wrapped token
           path = [fromTokenAddress, wrappedAddress, toTokenAddress];
         }
+
+        // Save routing path for visualization
+        setRoutingPath(path);
 
         let amounts;
         try {
@@ -497,6 +505,30 @@ export default function Swap() {
     }
   };
 
+  const saveTransaction = (from: Token, to: Token, fromAmt: string, toAmt: string, txHash: string) => {
+    const transaction = {
+      id: txHash,
+      fromToken: from,
+      toToken: to,
+      fromAmount: fromAmt,
+      toAmount: toAmt,
+      timestamp: Date.now(),
+      chainId: chainId,
+    };
+
+    const storageKey = `transactions_${chainId}`;
+    const existing = localStorage.getItem(storageKey);
+    const transactions = existing ? JSON.parse(existing) : [];
+    transactions.unshift(transaction); // Add to beginning
+    
+    // Keep only last 50 transactions
+    if (transactions.length > 50) {
+      transactions.pop();
+    }
+    
+    localStorage.setItem(storageKey, JSON.stringify(transactions));
+  };
+
   const handleSwap = async () => {
     if (!fromToken || !toToken || !fromAmount || parseFloat(fromAmount) <= 0) return;
 
@@ -722,6 +754,9 @@ export default function Swap() {
 
       const receipt = await tx.wait();
 
+      // Save transaction to history
+      saveTransaction(fromToken, toToken, fromAmount, toAmount, receipt.hash);
+
       // Refetch balances after swap
       await Promise.all([refetchFromBalance(), refetchToBalance()]);
 
@@ -832,15 +867,26 @@ export default function Swap() {
             <CardTitle className="text-xl md:text-2xl font-bold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text">
               Swap Tokens
             </CardTitle>
-            <Button 
-              data-testid="button-settings"
-              size="icon" 
-              variant="ghost"
-              onClick={() => setShowSettings(true)}
-              className="h-9 w-9 hover:bg-accent/50 hover:rotate-90 transition-all duration-300"
-            >
-              <Settings className="h-4 w-4" />
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button 
+                data-testid="button-transaction-history"
+                size="icon" 
+                variant="ghost"
+                onClick={() => setShowTransactionHistory(true)}
+                className="h-9 w-9 hover:bg-accent/50 transition-all duration-300"
+              >
+                <Bell className="h-4 w-4" />
+              </Button>
+              <Button 
+                data-testid="button-settings"
+                size="icon" 
+                variant="ghost"
+                onClick={() => setShowSettings(true)}
+                className="h-9 w-9 hover:bg-accent/50 hover:rotate-90 transition-all duration-300"
+              >
+                <Settings className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
           <p className="text-xs md:text-sm text-muted-foreground">Trade tokens instantly with the best rates</p>
         </CardHeader>
@@ -976,33 +1022,91 @@ export default function Swap() {
           </div>
 
           {fromToken && toToken && fromAmount && toAmount && (
-            <div className="bg-gradient-to-br from-muted/50 to-muted/30 rounded-xl p-4 space-y-2 border border-border/40 glass fade-in">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Exchange Rate</span>
-                <span className="font-medium">
-                  1 {fromToken.symbol} = {(parseFloat(toAmount) / parseFloat(fromAmount)).toFixed(6)} {toToken.symbol}
-                </span>
-              </div>
-              {priceImpact !== null && (
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Price Impact</span>
-                  <span className={`font-medium flex items-center gap-1 ${
-                    priceImpact > 5 ? 'text-red-500' : 
-                    priceImpact > 2 ? 'text-orange-500' : 
-                    'text-green-500'
-                  }`}>
-                    {priceImpact > 5 && <AlertTriangle className="h-3 w-3" />}
-                    {priceImpact.toFixed(2)}%
-                  </span>
+            <>
+              {priceImpact !== null && priceImpact > 15 && (
+                <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 space-y-2 fade-in">
+                  <div className="flex items-center gap-2 text-red-500">
+                    <AlertTriangle className="h-5 w-5" />
+                    <span className="font-semibold text-sm">High Price Impact Warning!</span>
+                  </div>
+                  <p className="text-xs text-red-400">
+                    This swap has a price impact of {priceImpact.toFixed(2)}%. You may receive significantly less than expected.
+                  </p>
                 </div>
               )}
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Minimum Received</span>
-                <span className="font-medium">
-                  {(parseFloat(toAmount) * (100 - slippage) / 100).toFixed(6)} {toToken.symbol}
-                </span>
-              </div>
-            </div>
+              
+              <Collapsible open={!isPriceImpactCollapsed} onOpenChange={(open) => setIsPriceImpactCollapsed(!open)}>
+                <CollapsibleTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    className="w-full flex items-center justify-between p-3 bg-gradient-to-br from-muted/50 to-muted/30 rounded-xl border border-border/40 hover:bg-muted/60 transition-all"
+                  >
+                    <span className="text-sm font-medium">Trade Details</span>
+                    <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${!isPriceImpactCollapsed ? 'rotate-180' : ''}`} />
+                  </Button>
+                </CollapsibleTrigger>
+                
+                <CollapsibleContent className="mt-2">
+                  <div className="bg-gradient-to-br from-muted/50 to-muted/30 rounded-xl p-4 space-y-2 border border-border/40 glass fade-in">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Exchange Rate</span>
+                      <span className="font-medium">
+                        1 {fromToken.symbol} = {(parseFloat(toAmount) / parseFloat(fromAmount)).toFixed(6)} {toToken.symbol}
+                      </span>
+                    </div>
+                    {priceImpact !== null && (
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Price Impact</span>
+                        <span className={`font-medium flex items-center gap-1 ${
+                          priceImpact > 15 ? 'text-red-500' : 
+                          priceImpact > 5 ? 'text-orange-500' : 
+                          priceImpact > 2 ? 'text-yellow-500' : 
+                          'text-green-500'
+                        }`}>
+                          {priceImpact > 5 && <AlertTriangle className="h-3 w-3" />}
+                          {priceImpact.toFixed(2)}%
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Minimum Received</span>
+                      <span className="font-medium">
+                        {(parseFloat(toAmount) * (100 - slippage) / 100).toFixed(6)} {toToken.symbol}
+                      </span>
+                    </div>
+                    
+                    {routingPath.length > 2 && (
+                      <div className="pt-2 border-t border-border/40 mt-2">
+                        <span className="text-xs text-muted-foreground block mb-2">Routing Path</span>
+                        <div className="flex items-center justify-center gap-2 flex-wrap">
+                          {routingPath.map((tokenAddress, idx) => {
+                            const routeToken = tokens.find(t => t.address.toLowerCase() === tokenAddress.toLowerCase());
+                            return (
+                              <div key={idx} className="flex items-center gap-2">
+                                <div className="flex items-center gap-1.5 bg-muted/50 rounded-lg px-2 py-1.5">
+                                  {routeToken?.logoURI ? (
+                                    <img 
+                                      src={routeToken.logoURI} 
+                                      alt={routeToken.symbol} 
+                                      className="w-4 h-4 rounded-full" 
+                                      onError={(e) => e.currentTarget.style.display = 'none'}
+                                    />
+                                  ) : (
+                                    <div className="w-4 h-4 rounded-full bg-muted flex items-center justify-center text-[8px]">?</div>
+                                  )}
+                                  <span className="text-xs font-medium">{routeToken?.symbol || '???'}</span>
+                                </div>
+                                {idx < routingPath.length - 1 && <ArrowRight className="h-3 w-3 text-muted-foreground" />}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            </>
           )}
 
           {isConnected ? (
@@ -1060,6 +1164,11 @@ export default function Swap() {
         onRecipientAddressChange={setRecipientAddress}
         quoteRefreshInterval={quoteRefreshInterval}
         onQuoteRefreshIntervalChange={setQuoteRefreshInterval}
+      />
+
+      <TransactionHistory
+        open={showTransactionHistory}
+        onClose={() => setShowTransactionHistory(false)}
       />
     </div>
   );
