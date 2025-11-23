@@ -200,7 +200,7 @@ export default function RemoveLiquidity() {
       if (!window.ethereum || !tokenA || !tokenB) return;
 
       const provider = new BrowserProvider(window.ethereum);
-      const FACTORY_ADDRESS = "0x90195102F2388E8e30E78BC0b1D3A9748379a1F5";
+      const FACTORY_ADDRESS = "0x7cC023C7184810B84657D55c1943eBfF8603B72B";
       const FACTORY_ABI = [
         "function getPair(address tokenA, address tokenB) view returns (address pair)"
       ];
@@ -268,7 +268,7 @@ export default function RemoveLiquidity() {
       const provider = new BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
 
-      const ROUTER_ADDRESS = "0x173A08F94C13a4A64a598361165e84Df871aEa9E";
+      const ROUTER_ADDRESS = "0xB92428D440c335546b69138F7fAF689F5ba8D436";
       const ROUTER_ABI = [
         "function removeLiquidity(address tokenA, address tokenB, uint liquidity, uint amountAMin, uint amountBMin, address to, uint deadline) external returns (uint amountA, uint amountB)",
         "function removeLiquidityETH(address token, uint liquidity, uint amountTokenMin, uint amountETHMin, address to, uint deadline) external returns (uint amountToken, uint amountETH)"
