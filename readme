@@ -19,8 +19,8 @@ Achswap is a modern decentralized exchange (DEX) built on the ARC Testnet. It pr
 - **Verified Tokens**: Blue checkmark for whitelisted tokens (USDC, wUSDC, ACHS)
 
 ## Token Addresses
-- **ACHS Token**: `I forgot the Ca you can find on Tokenlist`
-- **wUSDC**: `0x1ddEaa3Ead136a70D6D52c99cFd9e336babcCaC1`
+- **ACHS Token**: `0xDe5DB9049a8dd344dC1B7Bbb098f9da60930A6dA`
+- **wUSDC**: `0xDe5DB9049a8dd344dC1B7Bbb098f9da60930A6dA`
 - **USDC**: Native token (address: 0x0000000000000000000000000000000000000000)
 
 ## Project Structure
@@ -86,7 +86,7 @@ USDC (native token) can be wrapped to wUSDC (ERC20 token):
 - Build system uses pure Vite CLI for dev, build, and preview
 
 ## Recent Changes
-- **Nov 22, 2024**: 
+- **Nov 22, 2025**: 
   - **Migrated to 100% Static Architecture**: Removed all backend server code to create a truly serverless application like Uniswap
   - Converted from Express backend to pure Vite-based static application
   - Moved token data from server API to client-side module (`client/src/data/tokens.ts`)
