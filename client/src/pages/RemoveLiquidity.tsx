@@ -49,10 +49,10 @@ export default function RemoveLiquidity() {
   }, []);
 
   useEffect(() => {
-    if (tokenA && tokenB && address) {
+    if (tokenA && tokenB && address && tokens.length > 0) {
       fetchPairInfo();
     }
-  }, [tokenA, tokenB, address]);
+  }, [tokenA, tokenB, address, tokens]);
 
   useEffect(() => {
     const calculateAmountsToReceive = async () => {
@@ -110,7 +110,18 @@ export default function RemoveLiquidity() {
       const imported = localStorage.getItem('importedTokens');
       const importedTokens = imported ? JSON.parse(imported) : [];
 
-      setTokens([...defaultTokens, ...importedTokens]);
+      // Process tokens to add fallback logos
+      const processedDefaultTokens = defaultTokens.map(token => ({
+        ...token,
+        logoURI: token.logoURI || `/img/logos/unknown-token.png`
+      }));
+
+      const processedImportedTokens = importedTokens.map((token: Token) => ({
+        ...token,
+        logoURI: token.logoURI || `/img/logos/unknown-token.png`
+      }));
+
+      setTokens([...processedDefaultTokens, ...processedImportedTokens]);
     } catch (error) {
       console.error('Failed to load tokens:', error);
     }
@@ -147,7 +158,7 @@ export default function RemoveLiquidity() {
         name,
         symbol,
         decimals: Number(decimals),
-        logoURI: "",
+        logoURI: "/img/logos/unknown-token.png",
         verified: false,
       };
 
@@ -382,7 +393,7 @@ export default function RemoveLiquidity() {
               >
                 {tokenA ? (
                   <div className="flex items-center gap-2">
-                    {tokenA.logoURI && <img src={tokenA.logoURI} alt={tokenA.symbol} className="w-5 h-5 rounded-full" />}
+                    <img src={tokenA.logoURI} alt={tokenA.symbol} className="w-5 h-5 rounded-full" />
                     <span className="font-semibold">{tokenA.symbol}</span>
                   </div>
                 ) : (
@@ -397,7 +408,7 @@ export default function RemoveLiquidity() {
               >
                 {tokenB ? (
                   <div className="flex items-center gap-2">
-                    {tokenB.logoURI && <img src={tokenB.logoURI} alt={tokenB.symbol} className="w-5 h-5 rounded-full" />}
+                    <img src={tokenB.logoURI} alt={tokenB.symbol} className="w-5 h-5 rounded-full" />
                     <span className="font-semibold">{tokenB.symbol}</span>
                   </div>
                 ) : (
@@ -457,22 +468,14 @@ export default function RemoveLiquidity() {
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      {tokenA.logoURI ? (
-                        <img src={tokenA.logoURI} alt={tokenA.symbol} className="w-6 h-6 rounded-full" />
-                      ) : (
-                        <div className="w-6 h-6 rounded-full bg-background" />
-                      )}
+                      <img src={tokenA.logoURI} alt={tokenA.symbol} className="w-6 h-6 rounded-full" />
                       <span className="text-sm font-medium">{tokenA.symbol}</span>
                     </div>
                     <span className="font-medium tabular-nums">{parseFloat(amountAToReceive).toFixed(6)}</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      {tokenB.logoURI ? (
-                        <img src={tokenB.logoURI} alt={tokenB.symbol} className="w-6 h-6 rounded-full" />
-                      ) : (
-                        <div className="w-6 h-6 rounded-full bg-background" />
-                      )}
+                      <img src={tokenB.logoURI} alt={tokenB.symbol} className="w-6 h-6 rounded-full" />
                       <span className="text-sm font-medium">{tokenB.symbol}</span>
                     </div>
                     <span className="font-medium tabular-nums">{parseFloat(amountBToReceive).toFixed(6)}</span>

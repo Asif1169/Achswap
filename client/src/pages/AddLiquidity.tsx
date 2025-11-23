@@ -174,7 +174,18 @@ export default function AddLiquidity() {
       const imported = localStorage.getItem('importedTokens');
       const importedTokens = imported ? JSON.parse(imported) : [];
 
-      setTokens([...defaultTokens, ...importedTokens]);
+      // Process tokens to add fallback logos
+      const processedDefaultTokens = defaultTokens.map(token => ({
+        ...token,
+        logoURI: token.logoURI || `/img/logos/unknown-token.png`
+      }));
+
+      const processedImportedTokens = importedTokens.map((token: Token) => ({
+        ...token,
+        logoURI: token.logoURI || `/img/logos/unknown-token.png`
+      }));
+
+      setTokens([...processedDefaultTokens, ...processedImportedTokens]);
     } catch (error) {
       console.error('Failed to load tokens:', error);
     }
@@ -235,7 +246,7 @@ export default function AddLiquidity() {
         name,
         symbol,
         decimals: Number(decimals),
-        logoURI: "",
+        logoURI: "/img/logos/unknown-token.png",
         verified: false,
       };
 
@@ -572,11 +583,7 @@ export default function AddLiquidity() {
                 >
                   {tokenA ? (
                     <div className="flex items-center gap-2">
-                      {tokenA.logoURI ? (
-                        <img src={tokenA.logoURI} alt={tokenA.symbol} className="w-6 h-6 rounded-full" />
-                      ) : (
-                        <div className="w-6 h-6 rounded-full bg-background" />
-                      )}
+                      <img src={tokenA.logoURI} alt={tokenA.symbol} className="w-6 h-6 rounded-full" />
                       <span className="font-semibold text-sm md:text-base">{tokenA.symbol}</span>
                     </div>
                   ) : (
@@ -634,11 +641,7 @@ export default function AddLiquidity() {
                 >
                   {tokenB ? (
                     <div className="flex items-center gap-2">
-                      {tokenB.logoURI ? (
-                        <img src={tokenB.logoURI} alt={tokenB.symbol} className="w-6 h-6 rounded-full" />
-                      ) : (
-                        <div className="w-6 h-6 rounded-full bg-background" />
-                      )}
+                      <img src={tokenB.logoURI} alt={tokenB.symbol} className="w-6 h-6 rounded-full" />
                       <span className="font-semibold text-sm md:text-base">{tokenB.symbol}</span>
                     </div>
                   ) : (
