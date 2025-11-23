@@ -171,39 +171,39 @@ export default function Swap() {
         const outputAmount = formatAmount(amounts[amounts.length - 1], toToken.decimals);
         setToAmount(outputAmount);
 
-        // Calculate price impact properly for any decimal combination
+        // Calculate price impact using minimum amount comparison
         const fromAmountBigInt = parseAmount(fromAmount, fromToken.decimals);
         const outputAmountBigInt = amounts[amounts.length - 1];
 
-        // Calculate expected 1:1 value ratio at same precision
-        // Price impact = |1 - (actualOutput / expectedOutput)| * 100
-        // For tokens with different decimals, normalize to compare actual values
-
-        // Get the ratio: how much of toToken we get per 1 fromToken
-        const ONE_TOKEN = 10n ** BigInt(fromToken.decimals);
-
         try {
-          // Get quote for 1 unit of fromToken with the same path
-          const oneTokenAmounts = await router.getAmountsOut(ONE_TOKEN, path);
-          const oneTokenOutput = oneTokenAmounts[oneTokenAmounts.length - 1];
+          // Use mid-point calculation for better precision with small amounts
+          // Get quote for 50% of the input amount
+          const halfAmountBigInt = fromAmountBigInt / 2n;
+          
+          if (halfAmountBigInt > 0n) {
+            const halfAmountQuotes = await router.getAmountsOut(halfAmountBigInt, path);
+            const halfAmountOutput = halfAmountQuotes[halfAmountQuotes.length - 1];
+            
+            // Double the output from half amount to get expected linear output
+            const expectedOutput = halfAmountOutput * 2n;
+            
+            // Calculate price impact as deviation from linear expectation
+            if (expectedOutput > 0n && outputAmountBigInt > 0n) {
+              const impactBasisPoints = expectedOutput > outputAmountBigInt
+                ? ((expectedOutput - outputAmountBigInt) * 10000n) / expectedOutput
+                : ((outputAmountBigInt - expectedOutput) * 10000n) / expectedOutput;
 
-          // Calculate expected output based on linear scaling
-          const expectedOutput = (fromAmountBigInt * oneTokenOutput) / ONE_TOKEN;
-
-          // Calculate price impact as deviation from linear expectation
-          if (expectedOutput > 0n && outputAmountBigInt > 0n) {
-            const impactBasisPoints = expectedOutput > outputAmountBigInt
-              ? ((expectedOutput - outputAmountBigInt) * 10000n) / expectedOutput
-              : ((outputAmountBigInt - expectedOutput) * 10000n) / expectedOutput;
-
-            const impact = Number(impactBasisPoints) / 100;
-            setPriceImpact(Math.abs(impact));
+              const impact = Number(impactBasisPoints) / 100;
+              setPriceImpact(Math.max(0, Math.abs(impact))); // Ensure non-negative
+            } else {
+              setPriceImpact(0);
+            }
           } else {
             setPriceImpact(0);
           }
         } catch (priceImpactError) {
           console.error('Price impact calculation failed:', priceImpactError);
-          // Fallback: simple comparison if quote fails
+          // Fallback to 0 impact if calculation fails
           setPriceImpact(0);
         }
       } catch (error) {
