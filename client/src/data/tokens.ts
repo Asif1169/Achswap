@@ -44,7 +44,7 @@ const stableTestnetTokens: Token[] = [
   },
   {
     address: "0x1ddEaa3Ead136a70D6D52c99cFd9e336babcCaC1",
-    name: "Wrapped gUSDT",
+    name: "Wrapped USDT",
     symbol: "wUSDT",
     decimals: 18,
     logoURI: "/img/logos/wusdt.png",
