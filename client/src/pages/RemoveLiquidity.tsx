@@ -321,17 +321,18 @@ export default function RemoveLiquidity() {
       const isTokenANative = tokenA.address === "0x0000000000000000000000000000000000000000";
       const isTokenBNative = tokenB.address === "0x0000000000000000000000000000000000000000";
 
-      // Get wUSDC address and convert native USDC to wUSDC for router calls
-      const wusdcToken = tokens.find(t => t.symbol === 'wUSDC');
-      const wusdcAddress = wusdcToken?.address;
+      // Get wrapped token address and convert native to wrapped for router calls (chain-specific)
+      const wrappedSymbol = chainId === 2201 ? 'wUSDT' : 'wUSDC';
+      const wrappedToken = tokens.find(t => t.symbol === wrappedSymbol);
+      const wrappedAddress = wrappedToken?.address;
       
-      if (!wusdcAddress) {
-        throw new Error("wUSDC token not found");
+      if (!wrappedAddress) {
+        throw new Error(`${wrappedSymbol} token not found`);
       }
 
-      // Use wUSDC addresses for router calls since pools use wUSDC
-      const tokenAAddress = isTokenANative ? wusdcAddress : tokenA.address;
-      const tokenBAddress = isTokenBNative ? wusdcAddress : tokenB.address;
+      // Use wrapped addresses for router calls since pools use wrapped tokens
+      const tokenAAddress = isTokenANative ? wrappedAddress : tokenA.address;
+      const tokenBAddress = isTokenBNative ? wrappedAddress : tokenB.address;
 
       console.log('Remove liquidity params:', { 
         liquidityToRemove: liquidityToRemove.toString(),

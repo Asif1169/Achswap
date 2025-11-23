@@ -378,12 +378,13 @@ export default function AddLiquidity() {
       // Deadline: 20 minutes from now
       const deadline = Math.floor(Date.now() / 1000) + 60 * 20;
 
-      // Get wUSDC for native USDC conversion
-      const wusdcToken = tokens.find(t => t.symbol === 'wUSDC');
-      const wusdcAddress = wusdcToken?.address;
+      // Get wrapped token for native conversion (chain-specific)
+      const wrappedSymbol = chainId === 2201 ? 'wUSDT' : 'wUSDC';
+      const wrappedToken = tokens.find(t => t.symbol === wrappedSymbol);
+      const wrappedAddress = wrappedToken?.address;
       
-      if (!wusdcAddress) {
-        throw new Error("wUSDC token not found");
+      if (!wrappedAddress) {
+        throw new Error(`${wrappedSymbol} token not found`);
       }
 
       console.log('Adding liquidity:', {
@@ -400,9 +401,9 @@ export default function AddLiquidity() {
         description: `Adding ${amountA} ${tokenA.symbol} and ${amountB} ${tokenB.symbol}`,
       });
 
-      // Convert native USDC to wUSDC for pool operations
-      const tokenAAddress = isTokenANative ? wusdcAddress : tokenA.address;
-      const tokenBAddress = isTokenBNative ? wusdcAddress : tokenB.address;
+      // Convert native token to wrapped for pool operations
+      const tokenAAddress = isTokenANative ? wrappedAddress : tokenA.address;
+      const tokenBAddress = isTokenBNative ? wrappedAddress : tokenB.address;
 
       let tx;
 

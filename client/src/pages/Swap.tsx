@@ -70,7 +70,7 @@ export default function Swap() {
   // Set default tokens based on chain
   useEffect(() => {
     if (tokens.length === 0 || !chainId) return;
-    
+
     // Set defaults only if not already set or if chain changed
     if (!fromToken || fromToken.chainId !== chainId) {
       // For Stable Testnet (2201): default to gUSDT
@@ -80,7 +80,7 @@ export default function Swap() {
         : tokens.find(t => t.symbol === 'USDC');
       if (defaultFrom) setFromToken(defaultFrom);
     }
-    
+
     if (!toToken || toToken.chainId !== chainId) {
       // Both chains: default to ACHS
       const achs = tokens.find(t => t.symbol === 'ACHS');
@@ -544,7 +544,7 @@ export default function Swap() {
       const isFromNative = fromToken.address === "0x0000000000000000000000000000000000000000";
       const isToNative = toToken.address === "0x0000000000000000000000000000000000000000";
 
-      // Get wrapped token address for routing
+      // Get wrapped token for native conversion (already defined above)
       const wrappedAddress = wrappedToken?.address;
 
       if (!wrappedAddress) {
@@ -772,7 +772,7 @@ export default function Swap() {
   // Refetch balances immediately when tokens change
   useEffect(() => {
     if (!isConnected || !fromToken || !toToken) return;
-    
+
     refetchFromBalance();
     refetchToBalance();
   }, [isConnected, fromToken?.address, toToken?.address]);
@@ -815,6 +815,12 @@ export default function Swap() {
   const wrappedSymbol = chainId === 2201 ? 'wUSDT' : 'wUSDC';
   const nativeToken = tokens.find(t => t.symbol === nativeSymbol);
   const wrappedToken = tokens.find(t => t.symbol === wrappedSymbol);
+
+  // Define ROUTER_ADDRESS based on chainId
+  let ROUTER_ADDRESS = "";
+  if (contracts) {
+    ROUTER_ADDRESS = contracts.router;
+  }
 
   return (
     <div className="container max-w-md mx-auto px-4 py-4 md:py-8 fade-in">
