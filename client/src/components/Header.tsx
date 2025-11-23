@@ -1,9 +1,10 @@
 import { Link } from "wouter";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
-import { useAccount } from "wagmi";
+import { useAccount, useChainId } from "wagmi";
 
 export function Header() {
   const { isConnected } = useAccount();
+  const chainId = useChainId();
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60 shadow-lg">
@@ -34,8 +35,15 @@ export function Header() {
 
         <div className="flex items-center gap-2 md:gap-4 fade-in">
           <div className="hidden sm:flex items-center gap-2 px-3 py-2 bg-muted/50 rounded-lg border border-primary/30 hover:border-primary/60 transition-all duration-300 shimmer">
-            <img src="/img/logos/arc-network.png" alt="ARC Network" className="h-5 w-5 rounded-full" onError={(e) => console.error('Failed to load network logo:', e)} />
-            <span className="text-xs md:text-sm font-medium text-white">ARC Testnet</span>
+            <img 
+              src={chainId === 2201 ? "/img/logos/stable-network.png" : "/img/logos/arc-network.png"} 
+              alt={chainId === 2201 ? "Stable Network" : "ARC Network"} 
+              className="h-5 w-5 rounded-full" 
+              onError={(e) => console.error('Failed to load network logo:', e)} 
+            />
+            <span className="text-xs md:text-sm font-medium text-white">
+              {chainId === 2201 ? "Stable Testnet" : "ARC Testnet"}
+            </span>
             <span className="h-2 w-2 bg-green-500 rounded-full animate-pulse"></span>
           </div>
 

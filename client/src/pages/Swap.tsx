@@ -183,7 +183,7 @@ export default function Swap() {
         const ONE_TOKEN = 10n ** BigInt(fromToken.decimals);
 
         try {
-          // Get quote for 1 unit of fromToken
+          // Get quote for 1 unit of fromToken with the same path
           const oneTokenAmounts = await router.getAmountsOut(ONE_TOKEN, path);
           const oneTokenOutput = oneTokenAmounts[oneTokenAmounts.length - 1];
 
@@ -201,7 +201,8 @@ export default function Swap() {
           } else {
             setPriceImpact(0);
           }
-        } catch {
+        } catch (priceImpactError) {
+          console.error('Price impact calculation failed:', priceImpactError);
           // Fallback: simple comparison if quote fails
           setPriceImpact(0);
         }
@@ -220,7 +221,7 @@ export default function Swap() {
     const intervalId = setInterval(fetchQuote, quoteRefreshInterval * 1000);
 
     return () => clearInterval(intervalId);
-  }, [fromAmount, fromToken, toToken, tokens, quoteRefreshInterval])
+  }, [fromAmount, fromToken, toToken, tokens, quoteRefreshInterval, contracts, chainId])
 
   const loadTokens = async () => {
     try {
