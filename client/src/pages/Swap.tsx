@@ -703,22 +703,25 @@ export default function Swap() {
     ...(toToken && !isToTokenNative ? { token: toToken.address as `0x${string}` } : {}),
   });
 
-  // Auto-refresh balances every 30 seconds and when tokens change
+  // Refetch balances immediately when tokens change
   useEffect(() => {
     if (!isConnected || !fromToken || !toToken) return;
-
-    // Refetch immediately when tokens change
+    
     refetchFromBalance();
     refetchToBalance();
+  }, [isConnected, fromToken?.address, toToken?.address]);
 
-    // Set up interval for continuous updates
+  // Auto-refresh balances every 30 seconds
+  useEffect(() => {
+    if (!isConnected) return;
+
     const intervalId = setInterval(() => {
       refetchFromBalance();
       refetchToBalance();
     }, 30000); // 30 seconds
 
     return () => clearInterval(intervalId);
-  }, [isConnected, fromToken, toToken, refetchFromBalance, refetchToBalance]);
+  }, [isConnected, refetchFromBalance, refetchToBalance]);
 
   let fromBalanceFormatted = "0.00";
   let toBalanceFormatted = "0.00";
