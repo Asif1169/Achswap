@@ -60,44 +60,21 @@ export default function Swap() {
     loadTokens();
   }, []);
 
-  // Parse URL parameters for default token pair and amount
+  // Set default tokens to USDC and ACHS
   useEffect(() => {
     if (tokens.length === 0) return;
-
-    const params = new URLSearchParams(window.location.search);
-    const queryKeys = Array.from(params.keys());
-
-    // Find token pair query (e.g., "usdc+achs" or "usdc+0x000000")
-    const pairQuery = queryKeys.find(key => key.includes('+'));
-
-    if (pairQuery) {
-      const parts = pairQuery.split('+');
-      if (parts.length === 2) {
-        const [fromTokenStr, toTokenStr] = parts;
-
-        // Find tokens by symbol or address (case-insensitive)
-        const findToken = (str: string) => {
-          const normalized = str.toLowerCase().trim();
-          return tokens.find(t => 
-            t.symbol.toLowerCase() === normalized || 
-            t.address.toLowerCase() === normalized
-          );
-        };
-
-        const foundFromToken = findToken(fromTokenStr);
-        const foundToToken = findToken(toTokenStr);
-
-        if (foundFromToken && !fromToken) setFromToken(foundFromToken);
-        if (foundToToken && !toToken) setToToken(foundToToken);
-      }
+    
+    // Set defaults only if not already set
+    if (!fromToken) {
+      const usdc = tokens.find(t => t.symbol === 'USDC');
+      if (usdc) setFromToken(usdc);
     }
-
-    // Parse amount parameter
-    const amountParam = params.get('amount');
-    if (amountParam && !isNaN(parseFloat(amountParam)) && parseFloat(amountParam) > 0 && !fromAmount) {
-      setFromAmount(amountParam);
+    
+    if (!toToken) {
+      const achs = tokens.find(t => t.symbol === 'ACHS');
+      if (achs) setToToken(achs);
     }
-  }, [tokens]);
+  }, [tokens, fromToken, toToken]);
 
   // Fetch quote when fromAmount, fromToken, or toToken changes
   useEffect(() => {
@@ -726,17 +703,22 @@ export default function Swap() {
     ...(toToken && !isToTokenNative ? { token: toToken.address as `0x${string}` } : {}),
   });
 
-  // Auto-refresh balances every 30 seconds
+  // Auto-refresh balances every 30 seconds and when tokens change
   useEffect(() => {
-    if (!isConnected) return;
+    if (!isConnected || !fromToken || !toToken) return;
 
+    // Refetch immediately when tokens change
+    refetchFromBalance();
+    refetchToBalance();
+
+    // Set up interval for continuous updates
     const intervalId = setInterval(() => {
       refetchFromBalance();
       refetchToBalance();
     }, 30000); // 30 seconds
 
     return () => clearInterval(intervalId);
-  }, [isConnected, refetchFromBalance, refetchToBalance]);
+  }, [isConnected, fromToken, toToken, refetchFromBalance, refetchToBalance]);
 
   let fromBalanceFormatted = "0.00";
   let toBalanceFormatted = "0.00";
