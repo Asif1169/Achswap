@@ -8,6 +8,7 @@ export const tokenSchema = z.object({
   decimals: z.number(),
   logoURI: z.string(),
   verified: z.boolean().default(false),
+  chainId: z.number(),
 });
 
 export type Token = z.infer<typeof tokenSchema>;
