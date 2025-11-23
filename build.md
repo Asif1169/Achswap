@@ -1,4 +1,4 @@
-# Achswap DEX - Replit Configuration
+# Achswap DEX 
 
 ## Overview
 
@@ -124,8 +124,8 @@ Preferred communication style: Simple, everyday language.
 - WalletConnect Project ID required for RainbowKit wallet connections (configured via `VITE_WALLETCONNECT_PROJECT_ID` environment variable)
 
 **Smart Contracts on ARC Testnet:**
-- Factory Contract: `0x90195102F2388E8e30E78BC0b1D3A9748379a1F5`
-- Router Contract: `0x173A08F94C13a4A64a598361165e84Df871aEa9E`
+- Factory Contract: `0x7cC023C7184810B84657D55c1943eBfF8603B72B`
+- Router Contract: `0xB92428D440c335546b69138F7fAF689F5ba8D436`
 - wUSDC Contract: `0xDe5DB9049a8dd344dC1B7Bbb098f9da60930A6dA`
 - ACHS Token: `0x45Bb5425f293bdd209c894364C462421FF5FfA48`
 
