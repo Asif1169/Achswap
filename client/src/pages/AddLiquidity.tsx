@@ -36,8 +36,8 @@ export default function AddLiquidity() {
   const { address, isConnected } = useAccount();
   const { toast } = useToast();
 
-  const FACTORY_ADDRESS = "0x90195102F2388E8e30E78BC0b1D3A9748379a1F5";
-  const ROUTER_ADDRESS = "0x173A08F94C13a4A64a598361165e84Df871aEa9E";
+  const FACTORY_ADDRESS = "0x7cC023C7184810B84657D55c1943eBfF8603B72B";
+  const ROUTER_ADDRESS = "0xB92428D440c335546b69138F7fAF689F5ba8D436";
   const ARCscan_EXPLORER_URL = "https://testnet.arcscan.app/tx/";
 
   const FACTORY_ABI = [
