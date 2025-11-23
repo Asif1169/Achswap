@@ -6,6 +6,10 @@ export function Header() {
   const { isConnected } = useAccount();
   const chainId = useChainId();
 
+  const chainDisplayInfo = chainId === 2201 
+    ? { name: "Stable Testnet", logo: "/img/logos/stable-network.png" }
+    : { name: "ARC Testnet", logo: "/img/logos/arc-network.png" };
+
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60 shadow-lg">
       <div className="container flex h-16 items-center justify-between px-4 md:px-6 max-w-7xl mx-auto">
@@ -33,19 +37,23 @@ export function Header() {
           </nav>
         </div>
 
-        <div className="flex items-center gap-2 md:gap-4 fade-in">
-          <div className="hidden sm:flex items-center gap-2 px-3 py-2 bg-muted/50 rounded-lg border border-primary/30 hover:border-primary/60 transition-all duration-300 shimmer">
+        <div className="flex items-center gap-2 md:gap-3 fade-in">
+          <button
+            onClick={() => (document.querySelector('[data-testid="connect-wallet-button"] button') as HTMLButtonElement)?.click()}
+            className="flex items-center gap-1.5 md:gap-2 px-2 md:px-3 py-2 bg-muted/50 rounded-lg border border-primary/30 hover:border-primary/60 hover:bg-muted/70 transition-all duration-300 cursor-pointer group"
+            title="Click to switch network"
+          >
             <img 
-              src={chainId === 2201 ? "/img/logos/stable-network.png" : "/img/logos/arc-network.png"} 
-              alt={chainId === 2201 ? "Stable Network" : "ARC Network"} 
-              className="h-5 w-5 rounded-full" 
+              src={chainDisplayInfo.logo} 
+              alt={chainDisplayInfo.name} 
+              className="h-4 w-4 md:h-5 md:w-5 rounded-full" 
               onError={(e) => console.error('Failed to load network logo:', e)} 
             />
-            <span className="text-xs md:text-sm font-medium text-white">
-              {chainId === 2201 ? "Stable Testnet" : "ARC Testnet"}
+            <span className="text-xs md:text-sm font-medium text-white whitespace-nowrap">
+              {chainDisplayInfo.name}
             </span>
-            <span className="h-2 w-2 bg-green-500 rounded-full animate-pulse"></span>
-          </div>
+            <span className="h-1.5 w-1.5 md:h-2 md:w-2 bg-green-500 rounded-full animate-pulse"></span>
+          </button>
 
           <div data-testid="connect-wallet-button">
             <ConnectButton
