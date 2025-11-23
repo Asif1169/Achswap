@@ -51,7 +51,7 @@ export default function Swap() {
   const [quoteRefreshInterval, setQuoteRefreshInterval] = useState(30);
   const [routingPath, setRoutingPath] = useState<string[]>([]);
   const [showTransactionHistory, setShowTransactionHistory] = useState(false);
-  const [isPriceImpactCollapsed, setIsPriceImpactCollapsed] = useState(true);
+  const [isPriceImpactCollapsed, setIsPriceImpactCollapsed] = useState(false);
 
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
