@@ -19,7 +19,30 @@ export const arcTestnet = defineChain({
     },
   },
   blockExplorers: {
-    default: { name: 'Explorer', url: 'https://explorer.testnet.arc.network' },
+    default: { name: 'ARCscan', url: 'https://testnet.arcscan.app' },
+  },
+  testnet: true,
+});
+
+// Define Stable Testnet chain
+export const stableTestnet = defineChain({
+  id: 2201,
+  name: 'Stable Testnet',
+  nativeCurrency: {
+    decimals: 18,
+    name: 'gUSDT',
+    symbol: 'gUSDT',
+  },
+  rpcUrls: {
+    default: {
+      http: ['https://rpc.testnet.stable.xyz/'],
+    },
+    public: {
+      http: ['https://rpc.testnet.stable.xyz/'],
+    },
+  },
+  blockExplorers: {
+    default: { name: 'Stablescan', url: 'https://testnet.stablescan.xyz' },
   },
   testnet: true,
 });
@@ -27,6 +50,6 @@ export const arcTestnet = defineChain({
 export const config = getDefaultConfig({
   appName: 'Achswap',
   projectId: import.meta.env.VITE_WALLETCONNECT_PROJECT_ID!,
-  chains: [arcTestnet],
+  chains: [arcTestnet, stableTestnet],
   ssr: false,
 });
