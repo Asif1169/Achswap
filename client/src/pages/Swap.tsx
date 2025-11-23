@@ -5,12 +5,13 @@ import { Input } from "@/components/ui/input";
 import { ArrowDownUp, Settings, AlertTriangle, ExternalLink, HelpCircle } from "lucide-react";
 import { TokenSelector } from "@/components/TokenSelector";
 import { SwapSettings } from "@/components/SwapSettings";
-import { useAccount, useBalance } from "wagmi";
+import { useAccount, useBalance, useChainId } from "wagmi";
 import { useToast } from "@/hooks/use-toast";
 import type { Token } from "@shared/schema";
 import { Contract, BrowserProvider, formatUnits, parseUnits } from "ethers";
-import { defaultTokens } from "@/data/tokens";
+import { defaultTokens, getTokensByChainId } from "@/data/tokens";
 import { formatAmount, parseAmount } from "@/lib/decimal-utils";
+import { getContractsForChain } from "@/lib/contracts";
 
 // ERC20 ABI for token operations
 const ERC20_ABI = [
@@ -22,8 +23,8 @@ const ERC20_ABI = [
   "function allowance(address owner, address spender) view returns (uint256)",
 ];
 
-// wUSDC contract ABI for deposit/withdraw
-const WUSDC_ABI = [
+// Wrapped token contract ABI for deposit/withdraw (wUSDC/wUSDT)
+const WRAPPED_TOKEN_ABI = [
   "function deposit() payable",
   "function withdraw(uint256 amount) returns (bool)",
   "function approve(address spender, uint256 amount) returns (bool)",
@@ -48,33 +49,44 @@ export default function Swap() {
   const [quoteRefreshInterval, setQuoteRefreshInterval] = useState(30);
 
   const { address, isConnected } = useAccount();
+  const chainId = useChainId();
   const { toast } = useToast();
+
+  // Get chain-specific contracts
+  const contracts = chainId ? getContractsForChain(chainId) : null;
 
   // Function to open transaction in explorer
   const openExplorer = (txHash: string) => {
-    window.open(`https://testnet.arcscan.app/tx/${txHash}`, '_blank');
+    if (contracts) {
+      window.open(`${contracts.explorer}${txHash}`, '_blank');
+    }
   };
 
-  // Load tokens from JSON and localStorage
+  // Load tokens from JSON and localStorage - filter by chain
   useEffect(() => {
     loadTokens();
-  }, []);
+  }, [chainId]);
 
-  // Set default tokens to USDC and ACHS
+  // Set default tokens based on chain
   useEffect(() => {
-    if (tokens.length === 0) return;
+    if (tokens.length === 0 || !chainId) return;
     
-    // Set defaults only if not already set
-    if (!fromToken) {
-      const usdc = tokens.find(t => t.symbol === 'USDC');
-      if (usdc) setFromToken(usdc);
+    // Set defaults only if not already set or if chain changed
+    if (!fromToken || fromToken.chainId !== chainId) {
+      // For Stable Testnet (2201): default to gUSDT
+      // For ARC Testnet (5042002): default to USDC
+      const defaultFrom = chainId === 2201 
+        ? tokens.find(t => t.symbol === 'gUSDT')
+        : tokens.find(t => t.symbol === 'USDC');
+      if (defaultFrom) setFromToken(defaultFrom);
     }
     
-    if (!toToken) {
+    if (!toToken || toToken.chainId !== chainId) {
+      // Both chains: default to ACHS
       const achs = tokens.find(t => t.symbol === 'ACHS');
       if (achs) setToToken(achs);
     }
-  }, [tokens, fromToken, toToken]);
+  }, [tokens, fromToken, toToken, chainId]);
 
   // Fetch quote when fromAmount, fromToken, or toToken changes
   useEffect(() => {
@@ -85,9 +97,11 @@ export default function Swap() {
         return;
       }
 
-      // Handle wrap/unwrap - 1:1 ratio
-      const isWrap = fromToken.symbol === 'USDC' && toToken.symbol === 'wUSDC';
-      const isUnwrap = fromToken.symbol === 'wUSDC' && toToken.symbol === 'USDC';
+      // Handle wrap/unwrap - 1:1 ratio (supports both chains)
+      const isWrap = (fromToken.symbol === 'USDC' && toToken.symbol === 'wUSDC') ||
+                     (fromToken.symbol === 'gUSDT' && toToken.symbol === 'wUSDT');
+      const isUnwrap = (fromToken.symbol === 'wUSDC' && toToken.symbol === 'USDC') ||
+                       (fromToken.symbol === 'wUSDT' && toToken.symbol === 'gUSDT');
 
       if (isWrap || isUnwrap) {
         setToAmount(fromAmount);
@@ -95,46 +109,46 @@ export default function Swap() {
         return;
       }
 
-      if (!window.ethereum) return;
+      if (!window.ethereum || !contracts) return;
 
       setIsLoadingQuote(true);
       try {
         const provider = new BrowserProvider(window.ethereum);
-        const ROUTER_ADDRESS = "0xB92428D440c335546b69138F7fAF689F5ba8D436";
         const ROUTER_ABI = [
           "function getAmountsOut(uint amountIn, address[] memory path) public view returns (uint[] memory amounts)"
         ];
 
-        const router = new Contract(ROUTER_ADDRESS, ROUTER_ABI, provider);
+        const router = new Contract(contracts.router, ROUTER_ABI, provider);
         const amountIn = parseAmount(fromAmount, fromToken.decimals);
 
-        // Build path - use wUSDC for liquidity pool routing
+        // Build path - use wrapped token for liquidity pool routing
         let path: string[] = [];
         const isFromNative = fromToken.address === "0x0000000000000000000000000000000000000000";
         const isToNative = toToken.address === "0x0000000000000000000000000000000000000000";
 
-        // Get wUSDC address for routing
-        const wusdcTokenData = tokens.find(t => t.symbol === 'wUSDC');
-        const wusdcAddress = wusdcTokenData?.address;
+        // Get wrapped token address for routing (wUSDC for ARC, wUSDT for Stable)
+        const wrappedSymbol = chainId === 2201 ? 'wUSDT' : 'wUSDC';
+        const wrappedTokenData = tokens.find(t => t.symbol === wrappedSymbol);
+        const wrappedAddress = wrappedTokenData?.address;
 
-        if (!wusdcAddress) {
-          throw new Error("wUSDC token not found");
+        if (!wrappedAddress) {
+          throw new Error(`${wrappedSymbol} token not found`);
         }
 
-        // Convert native USDC addresses to wUSDC for pool routing
-        const fromTokenAddress = isFromNative ? wusdcAddress : fromToken.address;
-        const toTokenAddress = isToNative ? wusdcAddress : toToken.address;
+        // Convert native token addresses to wrapped for pool routing
+        const fromTokenAddress = isFromNative ? wrappedAddress : fromToken.address;
+        const toTokenAddress = isToNative ? wrappedAddress : toToken.address;
 
         // Build path based on converted addresses
         if (fromTokenAddress === toTokenAddress) {
           // Same token (shouldn't happen in UI, but handle it)
           path = [fromTokenAddress, toTokenAddress];
-        } else if (fromTokenAddress === wusdcAddress || toTokenAddress === wusdcAddress) {
-          // Direct path if one token is wUSDC
+        } else if (fromTokenAddress === wrappedAddress || toTokenAddress === wrappedAddress) {
+          // Direct path if one token is wrapped
           path = [fromTokenAddress, toTokenAddress];
         } else {
-          // Multi-hop through wUSDC
-          path = [fromTokenAddress, wusdcAddress, toTokenAddress];
+          // Multi-hop through wrapped token
+          path = [fromTokenAddress, wrappedAddress, toTokenAddress];
         }
 
         let amounts;
@@ -210,17 +224,23 @@ export default function Swap() {
 
   const loadTokens = async () => {
     try {
-      // Load imported tokens from localStorage
+      if (!chainId) return;
+
+      // Filter tokens by current chain ID
+      const chainTokens = getTokensByChainId(chainId);
+
+      // Load imported tokens from localStorage (filter by chain)
       const imported = localStorage.getItem('importedTokens');
       const importedTokens: Token[] = imported ? JSON.parse(imported) : [];
+      const chainImportedTokens = importedTokens.filter(t => t.chainId === chainId);
 
       // Add a default logoURI for missing logos, fallback to '?' if not available
-      const processedTokens = defaultTokens.map(token => ({
+      const processedTokens = chainTokens.map(token => ({
         ...token,
         logoURI: token.logoURI || `/img/logos/unknown-token.png` // Fallback logo
       }));
 
-      const processedImportedTokens = importedTokens.map(token => ({
+      const processedImportedTokens = chainImportedTokens.map(token => ({
         ...token,
         logoURI: token.logoURI || `/img/logos/unknown-token.png` // Fallback logo
       }));
@@ -248,8 +268,10 @@ export default function Swap() {
         return exists;
       }
 
-      // Use public RPC for token data (no wallet needed)
-      const rpcUrl = 'https://rpc.testnet.arc.network';
+      // Use public RPC for token data (no wallet needed) - use chain-specific RPC
+      const rpcUrl = chainId === 2201 
+        ? 'https://rpc.testnet.stable.xyz/' 
+        : 'https://rpc.testnet.arc.network';
       const provider = new BrowserProvider({
         request: async ({ method, params }: any) => {
           const response = await fetch(rpcUrl, {
@@ -346,29 +368,28 @@ export default function Swap() {
   };
 
   const handleWrap = async (amount: string) => {
-    if (!address || !window.ethereum || !wusdcToken) return;
+    if (!address || !window.ethereum || !wrappedToken || !nativeToken) return;
 
     setIsSwapping(true);
     try {
       const provider = new BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
 
-      const amountBigInt = parseAmount(amount, wusdcToken.decimals);
+      const amountBigInt = parseAmount(amount, wrappedToken.decimals);
 
-      // For native USDC, we send it to wUSDC contract's deposit function
-      // The wUSDC contract receives native tokens and mints wrapped tokens
-      const wusdcContract = new Contract(wusdcToken.address, WUSDC_ABI, signer);
+      // For native token, we send it to wrapped contract's deposit function
+      const wrappedContract = new Contract(wrappedToken.address, WRAPPED_TOKEN_ABI, signer);
 
       toast({
         title: "Wrapping...",
-        description: `Wrapping ${amount} USDC to wUSDC`,
+        description: `Wrapping ${amount} ${nativeSymbol} to ${wrappedSymbol}`,
       });
 
       // Call deposit with the amount as value (native token transfer)
       // Estimate gas and add 50% buffer
-      const gasEstimate = await wusdcContract.deposit.estimateGas({ value: amountBigInt });
+      const gasEstimate = await wrappedContract.deposit.estimateGas({ value: amountBigInt });
       const gasLimit = (gasEstimate * 150n) / 100n;
-      const tx = await wusdcContract.deposit({ value: amountBigInt, gasLimit });
+      const tx = await wrappedContract.deposit({ value: amountBigInt, gasLimit });
       const receipt = await tx.wait();
 
       // Refetch balances
@@ -381,7 +402,7 @@ export default function Swap() {
         title: "Wrap successful!",
         description: (
           <div className="flex items-center gap-2">
-            <span>Successfully wrapped {amount} USDC to wUSDC</span>
+            <span>Successfully wrapped {amount} {nativeSymbol} to {wrappedSymbol}</span>
             <Button 
               size="sm" 
               variant="ghost" 
@@ -406,36 +427,36 @@ export default function Swap() {
   };
 
   const handleUnwrap = async (amount: string) => {
-    if (!address || !window.ethereum || !wusdcToken) return;
+    if (!address || !window.ethereum || !wrappedToken || !nativeToken) return;
 
     setIsSwapping(true);
     try {
       const provider = new BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
 
-      const amountBigInt = parseAmount(amount, wusdcToken.decimals);
-      const wusdcContract = new Contract(wusdcToken.address, WUSDC_ABI, signer);
+      const amountBigInt = parseAmount(amount, wrappedToken.decimals);
+      const wrappedContract = new Contract(wrappedToken.address, WRAPPED_TOKEN_ABI, signer);
 
       toast({
         title: "Unwrapping...",
-        description: `Unwrapping ${amount} wUSDC to USDC`,
+        description: `Unwrapping ${amount} ${wrappedSymbol} to ${nativeSymbol}`,
       });
 
       // Check allowance first
-      const allowance = await wusdcContract.allowance(address, wusdcToken.address);
+      const allowance = await wrappedContract.allowance(address, wrappedToken.address);
 
       // If allowance is insufficient, approve first
       if (allowance < amountBigInt) {
-        const approveGasEstimate = await wusdcContract.approve.estimateGas(wusdcToken.address, amountBigInt);
+        const approveGasEstimate = await wrappedContract.approve.estimateGas(wrappedToken.address, amountBigInt);
         const approveGasLimit = (approveGasEstimate * 150n) / 100n;
-        const approveTx = await wusdcContract.approve(wusdcToken.address, amountBigInt, { gasLimit: approveGasLimit });
+        const approveTx = await wrappedContract.approve(wrappedToken.address, amountBigInt, { gasLimit: approveGasLimit });
         await approveTx.wait();
       }
 
       // Call withdraw with gas buffer
-      const gasEstimate = await wusdcContract.withdraw.estimateGas(amountBigInt);
+      const gasEstimate = await wrappedContract.withdraw.estimateGas(amountBigInt);
       const gasLimit = (gasEstimate * 150n) / 100n;
-      const tx = await wusdcContract.withdraw(amountBigInt, { gasLimit });
+      const tx = await wrappedContract.withdraw(amountBigInt, { gasLimit });
       const receipt = await tx.wait();
 
       // Refetch balances
@@ -448,7 +469,7 @@ export default function Swap() {
         title: "Unwrap successful!",
         description: (
           <div className="flex items-center gap-2">
-            <span>Successfully unwrapped {amount} wUSDC to USDC</span>
+            <span>Successfully unwrapped {amount} {wrappedSymbol} to {nativeSymbol}</span>
             <Button 
               size="sm" 
               variant="ghost" 
@@ -475,9 +496,11 @@ export default function Swap() {
   const handleSwap = async () => {
     if (!fromToken || !toToken || !fromAmount || parseFloat(fromAmount) <= 0) return;
 
-    // Check if this is a wrap/unwrap operation
-    const isWrap = fromToken.symbol === 'USDC' && toToken.symbol === 'wUSDC';
-    const isUnwrap = fromToken.symbol === 'wUSDC' && toToken.symbol === 'USDC';
+    // Check if this is a wrap/unwrap operation (supports both chains)
+    const isWrap = (fromToken.symbol === 'USDC' && toToken.symbol === 'wUSDC') ||
+                   (fromToken.symbol === 'gUSDT' && toToken.symbol === 'wUSDT');
+    const isUnwrap = (fromToken.symbol === 'wUSDC' && toToken.symbol === 'USDC') ||
+                     (fromToken.symbol === 'wUSDT' && toToken.symbol === 'gUSDT');
 
     if (isWrap) {
       await handleWrap(fromAmount);
@@ -496,10 +519,13 @@ export default function Swap() {
         throw new Error("Please connect your wallet");
       }
 
+      if (!contracts) {
+        throw new Error("Chain contracts not configured");
+      }
+
       const provider = new BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
 
-      const ROUTER_ADDRESS = "0xB92428D440c335546b69138F7fAF689F5ba8D436";
       const ROUTER_ABI = [
         "function getAmountsOut(uint amountIn, address[] memory path) public view returns (uint[] memory amounts)",
         "function swapExactTokensForTokens(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) external returns (uint[] memory amounts)",
@@ -507,35 +533,35 @@ export default function Swap() {
         "function swapExactTokensForETH(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) external returns (uint[] memory amounts)"
       ];
 
-      const router = new Contract(ROUTER_ADDRESS, ROUTER_ABI, signer);
+      const router = new Contract(contracts.router, ROUTER_ABI, signer);
       const amountIn = parseAmount(fromAmount, fromToken.decimals);
 
-      // Build path - use wUSDC for liquidity pool routing
+      // Build path - use wrapped token for liquidity pool routing
       let path: string[] = [];
       const isFromNative = fromToken.address === "0x0000000000000000000000000000000000000000";
       const isToNative = toToken.address === "0x0000000000000000000000000000000000000000";
 
-      // Get wUSDC address for routing
-      const wusdcAddress = wusdcToken?.address;
+      // Get wrapped token address for routing
+      const wrappedAddress = wrappedToken?.address;
 
-      if (!wusdcAddress) {
-        throw new Error("wUSDC token not found");
+      if (!wrappedAddress) {
+        throw new Error(`${wrappedSymbol} token not found`);
       }
 
-      // Convert native USDC addresses to wUSDC for pool routing
-      const fromTokenAddress = isFromNative ? wusdcAddress : fromToken.address;
-      const toTokenAddress = isToNative ? wusdcAddress : toToken.address;
+      // Convert native token addresses to wrapped for pool routing
+      const fromTokenAddress = isFromNative ? wrappedAddress : fromToken.address;
+      const toTokenAddress = isToNative ? wrappedAddress : toToken.address;
 
       // Build path based on converted addresses
       if (fromTokenAddress === toTokenAddress) {
         // Same token (shouldn't happen in UI, but handle it)
         path = [fromTokenAddress, toTokenAddress];
-      } else if (fromTokenAddress === wusdcAddress || toTokenAddress === wusdcAddress) {
-        // Direct path if one token is wUSDC
+      } else if (fromTokenAddress === wrappedAddress || toTokenAddress === wrappedAddress) {
+        // Direct path if one token is wrapped
         path = [fromTokenAddress, toTokenAddress];
       } else {
-        // Multi-hop through wUSDC
-        path = [fromTokenAddress, wusdcAddress, toTokenAddress];
+        // Multi-hop through wrapped token
+        path = [fromTokenAddress, wrappedAddress, toTokenAddress];
       }
 
       // Get expected output
@@ -549,10 +575,10 @@ export default function Swap() {
           try {
             amounts = await router.getAmountsOut(amountIn, path);
           } catch {
-            throw new Error("No liquidity pool exists for this token pair. Try using wUSDC instead of USDC.");
+            throw new Error(`No liquidity pool exists for this token pair. Try using ${wrappedSymbol} instead of ${nativeSymbol}.`);
           }
         } else {
-          throw new Error("No liquidity pool exists for this token pair. Try using wUSDC instead of USDC.");
+          throw new Error(`No liquidity pool exists for this token pair. Try using ${wrappedSymbol} instead of ${nativeSymbol}.`);
         }
       }
 
@@ -781,8 +807,11 @@ export default function Swap() {
     console.error('Error formatting toBalance', error);
   }
 
-  const usdcToken = tokens.find(t => t.symbol === 'USDC');
-  const wusdcToken = tokens.find(t => t.symbol === 'wUSDC');
+  // Get native and wrapped tokens based on current chain
+  const nativeSymbol = chainId === 2201 ? 'gUSDT' : 'USDC';
+  const wrappedSymbol = chainId === 2201 ? 'wUSDT' : 'wUSDC';
+  const nativeToken = tokens.find(t => t.symbol === nativeSymbol);
+  const wrappedToken = tokens.find(t => t.symbol === wrappedSymbol);
 
   return (
     <div className="container max-w-md mx-auto px-4 py-4 md:py-8 fade-in">
