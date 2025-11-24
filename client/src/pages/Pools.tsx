@@ -63,13 +63,13 @@ export default function Pools() {
 
   return (
     <div className="container max-w-6xl mx-auto px-4 py-4 md:py-8">
-      <div className="mb-6 space-y-4">
-        <div className="flex items-center justify-between">
+      <div className="mb-4 sm:mb-6 space-y-3 sm:space-y-4">
+        <div className="flex items-start sm:items-center justify-between gap-3">
           <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text">
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
               Liquidity Pools
             </h1>
-            <p className="text-muted-foreground mt-1">
+            <p className="text-muted-foreground mt-1 text-sm sm:text-base">
               Explore all available trading pairs
             </p>
           </div>
@@ -78,50 +78,50 @@ export default function Pools() {
             disabled={isLoading}
             variant="outline"
             size="icon"
-            className="h-10 w-10"
+            className="h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0"
           >
             <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
           </Button>
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
           <Card className="border-border/40 shadow-lg">
-            <CardContent className="pt-6">
+            <CardContent className="pt-4 sm:pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">Total Pools</p>
-                  <p className="text-2xl font-bold">{pools.length}</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground">Total Pools</p>
+                  <p className="text-xl sm:text-2xl font-bold">{pools.length}</p>
                 </div>
-                <Droplets className="h-8 w-8 text-blue-500" />
+                <Droplets className="h-6 w-6 sm:h-8 sm:w-8 text-blue-500" />
               </div>
             </CardContent>
           </Card>
 
           <Card className="border-border/40 shadow-lg">
-            <CardContent className="pt-6">
+            <CardContent className="pt-4 sm:pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-xs sm:text-sm text-muted-foreground">
                     Total TVL {chainId === 2201 ? '(gUSDT)' : '(USDC)'}
                   </p>
-                  <p className="text-2xl font-bold">{formatNumber(totalTVL)}</p>
+                  <p className="text-xl sm:text-2xl font-bold">{formatNumber(totalTVL)}</p>
                 </div>
-                <TrendingUp className="h-8 w-8 text-green-500" />
+                <TrendingUp className="h-6 w-6 sm:h-8 sm:w-8 text-green-500" />
               </div>
             </CardContent>
           </Card>
 
-          <Card className="border-border/40 shadow-lg">
-            <CardContent className="pt-6">
+          <Card className="border-border/40 shadow-lg sm:col-span-2 md:col-span-1">
+            <CardContent className="pt-4 sm:pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">Active Pairs</p>
-                  <p className="text-2xl font-bold">
+                  <p className="text-xs sm:text-sm text-muted-foreground">Active Pairs</p>
+                  <p className="text-xl sm:text-2xl font-bold">
                     {pools.filter(p => p.tvlUSD > 0).length}
                   </p>
                 </div>
-                <TrendingUp className="h-8 w-8 text-primary" />
+                <TrendingUp className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
               </div>
             </CardContent>
           </Card>
@@ -159,47 +159,70 @@ export default function Pools() {
             </div>
           ) : (
             <div className="space-y-2">
-              {filteredPools.map((pool) => (
-                <div
-                  key={pool.pairAddress}
-                  className="flex items-center justify-between p-4 rounded-lg border border-border/40 hover:border-primary/40 transition-all duration-300 hover:bg-accent/5"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center -space-x-2">
-                      <div className="w-10 h-10 rounded-full bg-primary/10 border-2 border-background flex items-center justify-center font-semibold text-sm">
-                        {pool.token0.symbol[0]}
+              {filteredPools.map((pool) => {
+                const token0Data = tokens.find(t => t.symbol === pool.token0.symbol);
+                const token1Data = tokens.find(t => t.symbol === pool.token1.symbol);
+                const token0Logo = token0Data?.logoURI || "/img/logos/unknown-token.png";
+                const token1Logo = token1Data?.logoURI || "/img/logos/unknown-token.png";
+
+                return (
+                  <div
+                    key={pool.pairAddress}
+                    className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 sm:p-4 rounded-lg border border-border/40 hover:border-primary/40 transition-all duration-300 hover:bg-accent/5 gap-3 sm:gap-4"
+                  >
+                    <div className="flex items-center gap-3 sm:gap-4 w-full sm:w-auto">
+                      <div className="flex items-center -space-x-2">
+                        <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 border-background overflow-hidden flex-shrink-0">
+                          <img 
+                            src={token0Logo} 
+                            alt={pool.token0.symbol}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              e.currentTarget.src = "/img/logos/unknown-token.png";
+                            }}
+                          />
+                        </div>
+                        <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 border-background overflow-hidden flex-shrink-0">
+                          <img 
+                            src={token1Logo} 
+                            alt={pool.token1.symbol}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              e.currentTarget.src = "/img/logos/unknown-token.png";
+                            }}
+                          />
+                        </div>
                       </div>
-                      <div className="w-10 h-10 rounded-full bg-blue-500/10 border-2 border-background flex items-center justify-center font-semibold text-sm">
-                        {pool.token1.symbol[0]}
+                      <div className="min-w-0">
+                        <p className="font-semibold text-base sm:text-lg">
+                          {pool.token0.symbol}/{pool.token1.symbol}
+                        </p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {pool.token0.name} / {pool.token1.name}
+                        </p>
                       </div>
                     </div>
-                    <div>
-                      <p className="font-semibold text-lg">
-                        {pool.token0.symbol}/{pool.token1.symbol}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {pool.token0.name} / {pool.token1.name}
-                      </p>
+
+                    <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto">
+                      <div className="text-left sm:text-right space-y-1">
+                        <p className="font-semibold text-base sm:text-lg">
+                          {formatNumber(pool.tvlUSD)}
+                        </p>
+                        <p className="text-xs text-muted-foreground">TVL</p>
+                      </div>
+
+                      <div className="text-right space-y-1">
+                        <p className="font-mono text-xs sm:text-sm">
+                          {parseFloat(pool.reserve0Formatted).toFixed(4)} {pool.token0.symbol}
+                        </p>
+                        <p className="font-mono text-xs sm:text-sm">
+                          {parseFloat(pool.reserve1Formatted).toFixed(4)} {pool.token1.symbol}
+                        </p>
+                      </div>
                     </div>
                   </div>
-
-                  <div className="text-right space-y-1">
-                    <p className="font-semibold text-lg">
-                      {formatNumber(pool.tvlUSD)}
-                    </p>
-                    <p className="text-xs text-muted-foreground">TVL</p>
-                  </div>
-
-                  <div className="text-right space-y-1 hidden md:block">
-                    <p className="font-mono text-sm">
-                      {parseFloat(pool.reserve0Formatted).toFixed(4)} {pool.token0.symbol}
-                    </p>
-                    <p className="font-mono text-sm">
-                      {parseFloat(pool.reserve1Formatted).toFixed(4)} {pool.token1.symbol}
-                    </p>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>
