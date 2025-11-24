@@ -26,12 +26,14 @@ export interface PoolData {
   token0: {
     address: string;
     symbol: string;
+    displaySymbol: string; // Unwrapped symbol for display
     decimals: number;
     name: string;
   };
   token1: {
     address: string;
     symbol: string;
+    displaySymbol: string; // Unwrapped symbol for display
     decimals: number;
     name: string;
   };
@@ -138,12 +140,14 @@ export async function fetchAllPools(
           token0: {
             address: token0Address,
             symbol: token0Symbol,
+            displaySymbol: getDisplaySymbol(token0Symbol, chainId),
             decimals: Number(token0Decimals),
             name: token0Name,
           },
           token1: {
             address: token1Address,
             symbol: token1Symbol,
+            displaySymbol: getDisplaySymbol(token1Symbol, chainId),
             decimals: Number(token1Decimals),
             name: token1Name,
           },
@@ -173,26 +177,27 @@ function calculateTVL(
   reserve1: number,
   chainId: number
 ): number {
-  // Chain-specific stable tokens
+  // All stable tokens are pegged to $1 USD
+  // wUSDT, gUSDT, USDT = $1 USD on Stable Testnet
+  // wUSDC, USDC = $1 USD on ARC Testnet
   const stableTokens = chainId === 2201 
-    ? ['gUSDT', 'USDT']  // Stable Testnet - only count native and ERC20 USDT
-    : ['USDC'];          // ARC Testnet - only count native USDC
+    ? ['gUSDT', 'wUSDT', 'USDT']
+    : ['USDC', 'wUSDC'];
 
   const isToken0Stable = stableTokens.includes(token0Symbol);
   const isToken1Stable = stableTokens.includes(token1Symbol);
 
   if (isToken0Stable && isToken1Stable) {
-    // Both stable - direct sum
+    // Both stable tokens = direct sum in USD (each token = $1)
     return reserve0 + reserve1;
   } else if (isToken0Stable) {
-    // Token0 is stable, so TVL = 2 * reserve0
+    // Token0 is $1 stable, so TVL in USD = 2 * reserve0
     return 2 * reserve0;
   } else if (isToken1Stable) {
-    // Token1 is stable, so TVL = 2 * reserve1
+    // Token1 is $1 stable, so TVL in USD = 2 * reserve1
     return 2 * reserve1;
   } else {
     // Neither is stable - we can't calculate USD value without price data
-    // Return 0 or estimate based on other pairs (future enhancement)
     return 0;
   }
 }
@@ -206,6 +211,17 @@ function isWrappedTokenPair(token0Symbol: string, token1Symbol: string, chainId:
   return wrappedPairs.some(
     ([t0, t1]) => token0Symbol === t0 && token1Symbol === t1
   );
+}
+
+function getDisplaySymbol(symbol: string, chainId: number): string {
+  // Convert wrapped tokens to their unwrapped display names
+  if (chainId === 2201) {
+    if (symbol === 'wUSDT') return 'USDT';
+    if (symbol === 'gUSDT') return 'USDT';
+  } else {
+    if (symbol === 'wUSDC') return 'USDC';
+  }
+  return symbol;
 }
 
 export function calculateTotalTVL(pools: PoolData[]): number {

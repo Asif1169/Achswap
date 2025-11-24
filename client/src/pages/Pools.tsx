@@ -103,7 +103,7 @@ export default function Pools() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs sm:text-sm text-muted-foreground">
-                    Total TVL {chainId === 2201 ? '(gUSDT)' : '(USDC)'}
+                    Total TVL (USD)
                   </p>
                   <p className="text-xl sm:text-2xl font-bold">{formatNumber(totalTVL)}</p>
                 </div>
@@ -175,7 +175,7 @@ export default function Pools() {
                         <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 border-background overflow-hidden flex-shrink-0">
                           <img 
                             src={token0Logo} 
-                            alt={pool.token0.symbol}
+                            alt={pool.token0.displaySymbol}
                             className="w-full h-full object-cover"
                             onError={(e) => {
                               e.currentTarget.src = "/img/logos/unknown-token.png";
@@ -185,7 +185,7 @@ export default function Pools() {
                         <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 border-background overflow-hidden flex-shrink-0">
                           <img 
                             src={token1Logo} 
-                            alt={pool.token1.symbol}
+                            alt={pool.token1.displaySymbol}
                             className="w-full h-full object-cover"
                             onError={(e) => {
                               e.currentTarget.src = "/img/logos/unknown-token.png";
@@ -194,8 +194,8 @@ export default function Pools() {
                         </div>
                       </div>
                       <div className="min-w-0">
-                        <p className="font-semibold text-base sm:text-lg">
-                          {pool.token0.symbol}/{pool.token1.symbol}
+                        <p className="font-semibold text-base sm:text-lg text-foreground">
+                          {pool.token0.displaySymbol}/{pool.token1.displaySymbol}
                         </p>
                         <p className="text-xs text-muted-foreground truncate">
                           {pool.token0.name} / {pool.token1.name}
@@ -205,20 +205,29 @@ export default function Pools() {
 
                     <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto">
                       <div className="text-left sm:text-right space-y-1">
-                        <p className="font-semibold text-base sm:text-lg">
+                        <p className="font-semibold text-base sm:text-lg text-foreground">
                           {formatNumber(pool.tvlUSD)}
                         </p>
-                        <p className="text-xs text-muted-foreground">TVL</p>
+                        <p className="text-xs text-muted-foreground">TVL (USD)</p>
                       </div>
 
                       <div className="text-right space-y-1">
-                        <p className="font-mono text-xs sm:text-sm">
-                          {parseFloat(pool.reserve0Formatted).toFixed(4)} {pool.token0.symbol}
+                        <p className="font-mono text-xs sm:text-sm text-foreground">
+                          {parseFloat(pool.reserve0Formatted).toFixed(4)} {pool.token0.displaySymbol}
                         </p>
-                        <p className="font-mono text-xs sm:text-sm">
-                          {parseFloat(pool.reserve1Formatted).toFixed(4)} {pool.token1.symbol}
+                        <p className="font-mono text-xs sm:text-sm text-foreground">
+                          {parseFloat(pool.reserve1Formatted).toFixed(4)} {pool.token1.displaySymbol}
                         </p>
                       </div>
+
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => window.location.href = '/add-liquidity'}
+                        className="flex-shrink-0"
+                      >
+                        Add
+                      </Button>
                     </div>
                   </div>
                 );
