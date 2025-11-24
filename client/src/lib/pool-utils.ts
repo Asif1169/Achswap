@@ -111,6 +111,12 @@ export async function fetchAllPools(
           token1Contract.name(),
         ]);
 
+        // Skip wrapped token pairs (wUSDC/USDC, wUSDT/gUSDT) - these are wrap tokens, not trading pairs
+        if (isWrappedTokenPair(token0Symbol, token1Symbol, chainId)) {
+          console.log(`Skipping wrapped token pair: ${token0Symbol}/${token1Symbol}`);
+          continue;
+        }
+
         const reserve0 = reserves[0];
         const reserve1 = reserves[1];
 
@@ -118,7 +124,7 @@ export async function fetchAllPools(
         const reserve0Formatted = formatUnits(reserve0, Number(token0Decimals));
         const reserve1Formatted = formatUnits(reserve1, Number(token1Decimals));
 
-        // Calculate TVL in USD
+        // Calculate TVL in USD using chain-specific logic
         const tvlUSD = calculateTVL(
           token0Symbol,
           token1Symbol,
@@ -167,10 +173,10 @@ function calculateTVL(
   reserve1: number,
   chainId: number
 ): number {
-  // For stable/native pairs, both sides are in USD equivalent
+  // Chain-specific stable tokens
   const stableTokens = chainId === 2201 
-    ? ['gUSDT', 'wUSDT', 'USDT']
-    : ['USDC', 'wUSDC'];
+    ? ['gUSDT', 'USDT']  // Stable Testnet - only count native and ERC20 USDT
+    : ['USDC'];          // ARC Testnet - only count native USDC
 
   const isToken0Stable = stableTokens.includes(token0Symbol);
   const isToken1Stable = stableTokens.includes(token1Symbol);
@@ -189,6 +195,17 @@ function calculateTVL(
     // Return 0 or estimate based on other pairs (future enhancement)
     return 0;
   }
+}
+
+function isWrappedTokenPair(token0Symbol: string, token1Symbol: string, chainId: number): boolean {
+  // Wrapped tokens are not trading pairs, they're 1:1 wrappers
+  const wrappedPairs = chainId === 2201
+    ? [['gUSDT', 'wUSDT'], ['wUSDT', 'gUSDT']]
+    : [['USDC', 'wUSDC'], ['wUSDC', 'USDC']];
+  
+  return wrappedPairs.some(
+    ([t0, t1]) => token0Symbol === t0 && token1Symbol === t1
+  );
 }
 
 export function calculateTotalTVL(pools: PoolData[]): number {

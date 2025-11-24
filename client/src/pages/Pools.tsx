@@ -102,7 +102,9 @@ export default function Pools() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">Total TVL</p>
+                  <p className="text-sm text-muted-foreground">
+                    Total TVL {chainId === 2201 ? '(gUSDT)' : '(USDC)'}
+                  </p>
                   <p className="text-2xl font-bold">{formatNumber(totalTVL)}</p>
                 </div>
                 <TrendingUp className="h-8 w-8 text-green-500" />
