@@ -84,7 +84,7 @@ Achswap is a multi-chain decentralized exchange (DEX) frontend application built
 - **Networks**: 
   - ARC Testnet (Chain ID: 5042002)
   - Stable Testnet (Chain ID: 2201)
-- **Port**: 5000 (required for Replit webview)
+
 
 ## Key Files
 - `vite.config.ts` - Vite configuration (configured for Replit with host 0.0.0.0:5000)
