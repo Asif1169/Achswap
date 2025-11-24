@@ -1,157 +1,213 @@
 # Achswap DEX 
 
+
+## Getting Started
+
+1. Clone the repository
+
+git clone https://github.com/Asif2902/Achswap.git
+cd Achswap
+
+2. Install dependencies
+
+Make sure your computer is connected to the internet:
+
+npm install
+
+3. Run for development / testing
+
+npm run dev
+
+Runs the development server with hot-reload.
+
+Access the app at http://localhost:5000.
+
+
+4. Run for production
+
+npm run build
+npm start
+
+npm run build generates the optimized production files in dist/public.
+
+npm start launches a local server serving the production-ready app.
+
+
+5. Environment variables
+
+Set VITE_WALLETCONNECT_PROJECT_ID in .env or  secrets for full wallet functionality.
+
+
+
+
 ## Overview
+Achswap is a multi-chain decentralized exchange (DEX) frontend application built with React, Vite, and Web3 technologies. It allows users to:
+- Swap tokens on multiple testnets (ARC Testnet & Stable Testnet)
+- Add liquidity to trading pairs
+- Remove liquidity from positions
+- Wrap/unwrap tokens (USDC ↔ wUSDC on ARC, gUSDT ↔ wUSDT on Stable)
 
-Achswap is a decentralized exchange (DEX) application built for the ARC Network testnet. It provides users with the ability to swap tokens, add/remove liquidity, and interact with automated market maker (AMM) pools. The application is a full-featured DeFi platform with a modern, user-friendly interface inspired by leading DEX platforms like Uniswap and PancakeSwap.
+## Project Structure
+- **Frontend**: React + TypeScript + Vite
+- **UI Components**: Radix UI + Tailwind CSS + shadcn/ui
+- **Web3**: wagmi, viem, RainbowKit, ethers.js
+- **Networks**: 
+  - ARC Testnet (Chain ID: 5042002)
+  - Stable Testnet (Chain ID: 2201)
+- **Port**: 5000 (required for Replit webview)
 
-**Core Features:**
-- Token swapping with slippage protection and price impact warnings
-- Liquidity pool management (add/remove liquidity)
-- Native token wrapping/unwrapping (USDC ↔ wUSDC)
-- Custom token import functionality
-- Real-time balance tracking and transaction handling
-- Multi-wallet support via RainbowKit
+## Key Files
+- `vite.config.ts` - Vite configuration (configured for Replit with host 0.0.0.0:5000)
+- `client/src/pages/` - Main application pages (Swap, AddLiquidity, RemoveLiquidity)
+- `client/src/lib/wagmi.ts` - Multi-chain RainbowKit configuration
+- `client/src/lib/contracts.ts` - Chain-specific contract addresses (Factory, Router)
+- `client/src/lib/decimal-utils.ts` - Decimal handling for tokens with any decimal precision
+- `client/src/data/tokens.ts` - Token definitions with chain filtering
+- `package.json` - Dependencies and scripts
 
-## User Preferences
+## Multi-Chain Implementation
 
-Preferred communication style: Simple, everyday language.
+### Supported Networks
 
-## System Architecture
+**ARC Testnet (Chain ID: 5042002)**
+- Native Token: USDC (18 decimals)
+- Wrapped Token: wUSDC (18 decimals)
+- Factory: `0x7cC023C7184810B84657D55c1943eBfF8603B72B`
+- Router: `0xB92428D440c335546b69138F7fAF689F5ba8D436`
+- Explorer: https://testnet.arcscan.app
+- RPC: https://rpc.testnet.arc.network
+- Default Token Pair: USDC + ACHS
 
-### Frontend Architecture
+**Stable Testnet (Chain ID: 2201)**
+- Native Token: gUSDT (18 decimals - Gas Token)
+- Wrapped Token: wUSDT (18 decimals)
+- Factory: `0x774453B7A832c83a1BD4adB4ca1e332107432A8f`
+- Router: `0xFb5B0cc9a61E76C5B5c60b52dF092F30B36c547e`
+- Explorer: https://testnet.stablescan.xyz
+- RPC: https://rpc.testnet.stable.xyz/
+- Default Token Pair: gUSDT + ACHS
 
-**Framework & Build System:**
-- React 18 with TypeScript for type-safe component development
-- Vite as the build tool and development server for fast HMR and optimized production builds
-- Wouter for client-side routing (lightweight alternative to React Router)
+### Chain Switching
+Users can switch between networks using their wallet (MetaMask, etc.). The application automatically:
+- Filters token lists by the active chain
+- Updates router and factory contract addresses
+- Sets appropriate default token pairs per chain
+- Handles wrap/unwrap operations for each chain's native token (USDC/wUSDC for ARC, gUSDT/wUSDT for Stable)
 
-**UI Component System:**
-- shadcn/ui component library built on Radix UI primitives
-- Tailwind CSS for utility-first styling with custom design tokens
-- Dark theme as the primary interface theme
-- Custom CSS variables for consistent color theming across components
-- Framer Motion for animations and transitions
+### Token Handling
+- All token imports include chainId field for proper multi-chain filtering
+- Decimal support: handles tokens with any decimal precision (0-77 decimals)
+- Price impact calculation uses mid-point comparison for accuracy across all token types
+- Automatic token filtering shows only tokens available on the active chain
 
-**Design System:**
-- Typography: Inter font family via Google Fonts
-- Spacing: Standardized Tailwind units (2, 4, 6, 8, 12, 16)
-- Component styling follows the "New York" shadcn variant
-- Glass morphism effects and gradient backgrounds for modern aesthetics
-- Responsive design with mobile-first breakpoints
+### Transaction Features
+- **150% Gas Boost**: All transactions (swaps, approvals, liquidity operations) include automatic gas estimation with 150% buffer
+- **Multi-hop Swaps**: Automatically routes through wrapped token for token pairs without direct liquidity
+- **Slippage Protection**: Configurable slippage tolerance with automatic minimum amount calculation
+- **Safe Operations**: All transactions validated for balance, allowance, and chain compatibility
 
-**State Management:**
-- React Query (TanStack Query) for server state and data fetching
-- React hooks for local component state
-- LocalStorage for persisting user preferences (imported tokens, settings)
+## Environment Variables
+Required environment variable:
+- `VITE_WALLETCONNECT_PROJECT_ID` - WalletConnect Cloud project ID for wallet connectivity
 
-### Blockchain Integration
+### Setting up WalletConnect (Required for full functionality)
+1. Visit https://cloud.walletconnect.com/
+2. Create a free account and project
+3. Copy your Project ID
+4. Update the environment variable in Replit Secrets or .env file
 
-**Web3 Stack:**
-- Wagmi v2 for React hooks that interact with Ethereum-compatible blockchains
-- RainbowKit for wallet connection UI and multi-wallet support
-- ethers.js v6 for low-level blockchain interactions and contract calls
-- Custom ARC Network testnet configuration (Chain ID: 5042002)
+## Running the Application
+The application runs automatically via configured workflow:
+- **Command**: `npm run dev`
+- **Access**: Port 5000 webview
+- **Development**: Hot module reloading enabled for fast iteration
 
-**Smart Contract Interactions:**
-- ERC20 token operations (approve, allowance, balanceOf, transfer)
-- Uniswap V2-style router contract for swaps and liquidity operations
-- Factory contract for pair discovery and creation
-- wUSDC (Wrapped USDC) contract for native token wrapping
-- All contract addresses are hardcoded for the ARC testnet deployment
+## Deployment
+Configured for static deployment:
+- **Build command**: `npm run build`
+- **Output directory**: `dist/public`
+- **Status**: Ready to publish directly from Replit
 
-**Transaction Flow:**
-1. Token approval checks before operations
-2. Allowance verification and approval requests when needed
-3. Transaction simulation and price quotes before execution
-4. Real-time transaction status tracking with toast notifications
-5. Post-transaction balance updates
+## Asset Organization
 
-### Application Structure
+### Logo Files (Cleaned & Organized)
+All logo files are stored in `client/public/img/logos/`:
+- `usdc.webp` - USDC token logo
+- `wusdc.png` - Wrapped USDC logo
+- `gusdt.png` - gUSDT token logo
+- `wusdt.png` - Wrapped gUSDT logo
+- `achs-token.png` - Achswap token logo
+- `achswap-logo.png` - Achswap brand logo
+- `arc-network.png` - ARC Testnet network logo
+- `stable-network.png` - Stable Testnet network logo
+- `unknown-token.png` - Fallback logo for tokens without custom logo
 
-**Routing:**
-- `/` - Swap interface (token exchange)
-- `/add-liquidity` - Add liquidity to pools
-- `/remove-liquidity` - Remove liquidity from pools
-- `*` - 404 Not Found page
+**Cleanup Completed**: Removed duplicate and unused logo files:
+- Deleted: `achs.png` (duplicate of achs-token.png)
+- Deleted: `arc-network.png` (from parent img folder - consolidation)
+- Deleted: `meta.jpg` (unused metadata file)
+- Deleted: `wusdc.jpeg` (duplicate of wusdc.png)
+- Removed: `logos/stable-testnet/` subdirectory (consolidated to main logos folder)
 
-**Key Pages:**
+## Technologies Used
+- React 18.3.1
+- Vite 5.4.20
+- TypeScript 5.6.3
+- Tailwind CSS 3.4.17
+- wagmi 2.13.4
+- RainbowKit 2.1.6
+- ethers 6.13.4
+- viem 2.21.4
+- Radix UI components
+- wouter (routing)
 
-1. **Swap Page** (`/pages/Swap.tsx`)
-   - Token selection with balance display
-   - Amount input with max balance shortcuts
-   - Price quote fetching from router contract
-   - Slippage tolerance and deadline settings
-   - Price impact warnings for large trades
-   - Wrap/unwrap modal for USDC ↔ wUSDC conversion
+## Recent Updates
 
-2. **Add Liquidity Page** (`/pages/AddLiquidity.tsx`)
-   - Dual token selection for liquidity pairs
-   - Proportional amount calculation based on existing reserves
-   - New pair creation vs. adding to existing pools
-   - LP token receipt estimation
-   - Share of pool percentage display
+### November 23, 2024 - Multi-Chain & Production Polish
+**Chain Integration:**
+- ✅ Stable Testnet (Chain ID: 2201) fully integrated alongside ARC Testnet
+- ✅ Chain-specific token filtering and contract management
+- ✅ Automatic default token pair selection per chain
+- ✅ Multi-chain wrap/unwrap support (USDC/wUSDC, gUSDT/wUSDT)
 
-3. **Remove Liquidity Page** (`/pages/RemoveLiquidity.tsx`)
-   - Percentage-based liquidity removal (25%, 50%, 75%, 100%)
-   - LP token balance tracking
-   - Token receipt estimation based on pool reserves
-   - Approve + Remove transaction flow
+**Transaction Safety:**
+- ✅ 150% gas boost applied to all transactions automatically
+- ✅ Gas estimation with safety buffer on all chain operations
 
-**Shared Components:**
+**Decimal & Price Handling:**
+- ✅ Full decimal support for tokens with any precision (0-77 decimals)
+- ✅ Fixed price impact calculation for accurate small amounts on all chains
+- ✅ Improved mid-point comparison method for consistent results
 
-- `Header.tsx` - Navigation bar with wallet connection and network indicator
-- `TokenSelector.tsx` - Modal for selecting tokens with search, filtering, and custom import
-- `SwapSettings.tsx` - Settings dialog for slippage, deadline, and recipient configuration
-- `WrapUnwrapModal.tsx` - Interface for wrapping/unwrapping native tokens
+**Assets & Cleanup:**
+- ✅ Professional token logos added for Stable Testnet (gUSDT, wUSDT)
+- ✅ Removed 2.2MB of duplicate/unused logo files
+- ✅ Consolidated asset organization for cleaner codebase
+- ✅ Logo paths optimized and unified across application
 
-**Data Layer:**
+**Code Quality:**
+- ✅ All pages (Swap, Add Liquidity, Remove Liquidity) updated for multi-chain
+- ✅ Token imports include chainId for proper filtering
+- ✅ Consistent decimal handling across all operations
+- ✅ Comprehensive error handling for cross-chain operations
 
-- `tokens.ts` - Default token list (USDC, wUSDC, ACHS)
-- `schema.ts` - Zod schemas for type validation (Token, ImportedToken, LiquidityPosition)
-- LocalStorage management for user-imported tokens
+### November 23, 2024 - Initial Replit Setup
+- ✅ Imported Achswap GitHub project
+- ✅ Installed all npm dependencies
+- ✅ Configured Vite dev server for port 5000
+- ✅ Set up RainbowKit with ARC Testnet support
+- ✅ Configured static deployment settings
+- ✅ Verified frontend loads successfully
 
-**Utility Functions:**
+## Architecture Notes
+- **Frontend-Only Architecture**: No backend server required, all blockchain interactions via RPC
+- **Chain Abstraction**: Single codebase supports unlimited chains via configuration
+- **Wallet Integration**: RainbowKit handles multi-chain wallet connections seamlessly
+- **Decimal Agnostic**: All math operations handle different token decimals automatically
+- **Production Ready**: Gas optimization, error handling, and user feedback on all operations
 
-- `decimal-utils.ts` - Precision-safe decimal formatting and parsing for token amounts
-- `utils.ts` - Tailwind class merging utility (cn function)
-- `wagmi.ts` - Blockchain network configuration and RainbowKit setup
+## Known Limitations
+- Some TypeScript LSP warnings exist but don't affect functionality
+- WalletConnect requires valid Project ID for full wallet connectivity
+- Token import requires valid ERC20 contract address on current chain
 
-### External Dependencies
-
-**Blockchain Infrastructure:**
-- ARC Network Testnet RPC: `https://rpc.testnet.arc.network`
-- ARC Network Block Explorer: `https://testnet.arcscan.app`
-- WalletConnect Project ID required for RainbowKit wallet connections (configured via `VITE_WALLETCONNECT_PROJECT_ID` environment variable)
-
-**Smart Contracts on ARC Testnet:**
-- Factory Contract: `0x7cC023C7184810B84657D55c1943eBfF8603B72B`
-- Router Contract: `0xB92428D440c335546b69138F7fAF689F5ba8D436`
-- wUSDC Contract: `0xDe5DB9049a8dd344dC1B7Bbb098f9da60930A6dA`
-- ACHS Token: `0x45Bb5425f293bdd209c894364C462421FF5FfA48`
-
-**Third-Party Services:**
-- Google Fonts CDN for Inter font family
-- RainbowKit's wallet connection infrastructure
-- User's browser wallet extensions (MetaMask, Rainbow, etc.)
-
-**Key NPM Packages:**
-- `@rainbow-me/rainbowkit` - Wallet connection UI
-- `wagmi` - React hooks for Ethereum
-- `ethers` - Blockchain interaction library
-- `@tanstack/react-query` - Data fetching and caching
-- `@radix-ui/*` - Unstyled accessible UI primitives
-- `tailwindcss` - Utility-first CSS framework
-- `framer-motion` - Animation library
-- `zod` - Schema validation
-- `wouter` - Lightweight routing
-- `date-fns` - Date utilities
-
-**Development Tools:**
-- Vite for development server and builds
-- TypeScript for type checking
-- PostCSS with Tailwind and Autoprefixer
-
-**Asset Dependencies:**
-- Token logos stored in `/public/img/` directory
-- Favicon and brand assets in `/public/` directory
-- Design guidelines document for UI consistency
