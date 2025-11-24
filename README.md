@@ -23,7 +23,7 @@ npm install
 *Make sure you're connected to the internet for package installation*
 
 #### 3 Set Up Environment Variables
-Create a `.env` file or use Replit Secrets:
+Create a `.env` file or use Vercel Secrets:
 ```env
 VITE_WALLETCONNECT_PROJECT_ID=your_project_id_here
 ```
