@@ -147,16 +147,19 @@ Required environment variable:
 4. Update the environment variable in Replit Secrets or .env file
 
 ## Running the Application
-The application runs automatically via configured workflow:
-- **Command**: `npm run dev`
-- **Access**: Port 5000 webview
-- **Development**: Hot module reloading enabled for fast iteration
 
-## Deployment
-Configured for static deployment:
-- **Build command**: `npm run build`
-- **Output directory**: `dist/public`
-- **Status**: Ready to publish directly from Replit
+### Development
+```bash
+npm run dev
+```
+- Hot module reloading enabled for fast iteration
+- Access at: `http://localhost:5000`
+
+### Production Build
+```bash
+npm run build
+npm start
+```
 
 ## Asset Organization
 
@@ -193,18 +196,18 @@ All logo files are stored in `client/public/img/logos/`:
 
 ## Recent Updates
 
-### November 24, 2025 - Token Metadata & Bug Fixes
+### November 24, 2025 - Pool Page & Token Metadata Fixes
+**New Features:**
+- ✅ Created new Pools page with pool discovery and display
+- ✅ Displays all available liquidity pools with TVL information
+- ✅ Pool search functionality by token name or symbol
+- ✅ Shows pool reserves and trading pair information
+
 **Pool Display Improvements:**
 - ✅ Fixed token metadata fetching to properly display token names instead of "UNKNOWN TOKEN"
 - ✅ Improved error handling for blockchain contract calls with individual try-catch blocks
 - ✅ Better fallback display using token address prefix when metadata unavailable
 - ✅ Enhanced robustness for intermittent RPC failures
-
-**Project Migration:**
-- ✅ Migrated project from Replit Agent to Replit environment
-- ✅ Configured Node.js 20 runtime
-- ✅ Set up deployment configuration for autoscale deployment
-- ✅ Updated workflow configuration for production readiness
 
 ### November 23, 2025 - Multi-Chain & Production Polish
 **Chain Integration:**
