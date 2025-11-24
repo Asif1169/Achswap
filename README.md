@@ -3,39 +3,69 @@
 
 ## Getting Started
 
-1. Clone the repository
+### Prerequisites
+- Node.js (v16 or higher)
+- npm or yarn package manager
+- A Web3 wallet (MetaMask recommended)
 
+###  Quick Start
+
+#### 1 Clone the Repository
+```bash
 git clone https://github.com/Asif2902/Achswap.git
 cd Achswap
+```
 
-2. Install dependencies
-
-Make sure your computer is connected to the internet:
-
+#### 2 Install Dependencies
+```bash
 npm install
+```
+*Make sure you're connected to the internet for package installation*
 
-3. Run for development / testing
+#### 3 Set Up Environment Variables
+Create a `.env` file or use Replit Secrets:
+```env
+VITE_WALLETCONNECT_PROJECT_ID=your_project_id_here
+```
 
+>  **Get your WalletConnect Project ID:**
+> 1. Visit [WalletConnect Cloud](https://cloud.walletconnect.com/)
+> 2. Create a free account and project
+> 3. Copy your Project ID
+
+#### 4 Run Development Server
+```bash
 npm run dev
+```
+ **Development server with hot-reload enabled**  
+🌐 Access at: `http://localhost:5000`
 
-Runs the development server with hot-reload.
+---
 
-Access the app at http://localhost:5000.
+### Production Build
 
-
-4. Run for production
-
+#### Build the Application
+```bash
 npm run build
+```
+Generates optimized production files in `dist/public`
+
+#### Start Production Server
+```bash
 npm start
+```
+Launches the production-ready application
 
-npm run build generates the optimized production files in dist/public.
+---
 
-npm start launches a local server serving the production-ready app.
+### 🔧 Available Commands
 
-
-5. Environment variables
-
-Set VITE_WALLETCONNECT_PROJECT_ID in .env or  secrets for full wallet functionality.
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start development server with hot-reload |
+| `npm run build` | Build optimized production bundle |
+| `npm start` | Serve production build locally |
+| `npm run preview` | Preview production build before deployment |
 
 
 
@@ -163,7 +193,7 @@ All logo files are stored in `client/public/img/logos/`:
 
 ## Recent Updates
 
-### November 23, 2024 - Multi-Chain & Production Polish
+### November 23, 2025 - Multi-Chain & Production Polish
 **Chain Integration:**
 - ✅ Stable Testnet (Chain ID: 2201) fully integrated alongside ARC Testnet
 - ✅ Chain-specific token filtering and contract management
@@ -191,7 +221,7 @@ All logo files are stored in `client/public/img/logos/`:
 - ✅ Consistent decimal handling across all operations
 - ✅ Comprehensive error handling for cross-chain operations
 
-### November 23, 2024 - Initial Replit Setup
+### November 23, 2025 - Initial Setup
 - ✅ Imported Achswap GitHub project
 - ✅ Installed all npm dependencies
 - ✅ Configured Vite dev server for port 5000
