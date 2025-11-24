@@ -160,8 +160,17 @@ export default function Pools() {
           ) : (
             <div className="space-y-2">
               {filteredPools.map((pool) => {
-                const token0Data = tokens.find(t => t.symbol === pool.token0.symbol);
-                const token1Data = tokens.find(t => t.symbol === pool.token1.symbol);
+                // Try to find token by symbol first, then by display symbol
+                const token0Data = tokens.find(t => 
+                  t.symbol === pool.token0.symbol || 
+                  t.symbol === pool.token0.displaySymbol
+                );
+                const token1Data = tokens.find(t => 
+                  t.symbol === pool.token1.symbol || 
+                  t.symbol === pool.token1.displaySymbol
+                );
+                
+                // Use fallback logo if token not found in our list
                 const token0Logo = token0Data?.logoURI || "/img/logos/unknown-token.png";
                 const token1Logo = token1Data?.logoURI || "/img/logos/unknown-token.png";
 

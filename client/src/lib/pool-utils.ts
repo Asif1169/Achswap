@@ -93,25 +93,54 @@ export async function fetchAllPools(
       try {
         const pairContract = new Contract(pairAddress, PAIR_ABI, provider);
         
-        const [token0Address, token1Address, reserves, totalSupply] = await Promise.all([
-          pairContract.token0(),
-          pairContract.token1(),
-          pairContract.getReserves(),
-          pairContract.totalSupply(),
-        ]);
+        // Get basic pair info
+        let token0Address: string;
+        let token1Address: string;
+        let reserves: any;
+        let totalSupply: bigint;
 
-        // Fetch token info
+        try {
+          [token0Address, token1Address, reserves, totalSupply] = await Promise.all([
+            pairContract.token0(),
+            pairContract.token1(),
+            pairContract.getReserves(),
+            pairContract.totalSupply(),
+          ]);
+        } catch (error) {
+          console.error(`Failed to fetch basic pair info for ${pairAddress}:`, error);
+          continue;
+        }
+
+        // Fetch token info with fallbacks
         const token0Contract = new Contract(token0Address, ERC20_ABI, provider);
         const token1Contract = new Contract(token1Address, ERC20_ABI, provider);
 
-        const [token0Symbol, token0Decimals, token0Name, token1Symbol, token1Decimals, token1Name] = await Promise.all([
-          token0Contract.symbol(),
-          token0Contract.decimals(),
-          token0Contract.name(),
-          token1Contract.symbol(),
-          token1Contract.decimals(),
-          token1Contract.name(),
-        ]);
+        let token0Symbol = "UNKNOWN";
+        let token0Decimals = 18;
+        let token0Name = "Unknown Token";
+        let token1Symbol = "UNKNOWN";
+        let token1Decimals = 18;
+        let token1Name = "Unknown Token";
+
+        try {
+          [token0Symbol, token0Decimals, token0Name] = await Promise.all([
+            token0Contract.symbol().catch(() => "UNKNOWN"),
+            token0Contract.decimals().catch(() => 18),
+            token0Contract.name().catch(() => "Unknown Token"),
+          ]);
+        } catch (error) {
+          console.warn(`Failed to fetch token0 metadata for ${token0Address}, using fallback`);
+        }
+
+        try {
+          [token1Symbol, token1Decimals, token1Name] = await Promise.all([
+            token1Contract.symbol().catch(() => "UNKNOWN"),
+            token1Contract.decimals().catch(() => 18),
+            token1Contract.name().catch(() => "Unknown Token"),
+          ]);
+        } catch (error) {
+          console.warn(`Failed to fetch token1 metadata for ${token1Address}, using fallback`);
+        }
 
         // Skip wrapped token pairs (wUSDC/USDC, wUSDT/gUSDT) - these are wrap tokens, not trading pairs
         if (isWrappedTokenPair(token0Symbol, token1Symbol, chainId)) {
@@ -158,8 +187,11 @@ export async function fetchAllPools(
           tvlUSD,
           totalSupply,
         });
+
+        console.log(`Successfully loaded pool: ${token0Symbol}/${token1Symbol}`);
       } catch (error) {
         console.error(`Failed to fetch data for pair ${pairAddress}:`, error);
+        // Continue to next pool instead of breaking
       }
     }
 
