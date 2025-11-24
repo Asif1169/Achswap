@@ -193,6 +193,19 @@ All logo files are stored in `client/public/img/logos/`:
 
 ## Recent Updates
 
+### November 24, 2025 - Token Metadata & Bug Fixes
+**Pool Display Improvements:**
+- ✅ Fixed token metadata fetching to properly display token names instead of "UNKNOWN TOKEN"
+- ✅ Improved error handling for blockchain contract calls with individual try-catch blocks
+- ✅ Better fallback display using token address prefix when metadata unavailable
+- ✅ Enhanced robustness for intermittent RPC failures
+
+**Project Migration:**
+- ✅ Migrated project from Replit Agent to Replit environment
+- ✅ Configured Node.js 20 runtime
+- ✅ Set up deployment configuration for autoscale deployment
+- ✅ Updated workflow configuration for production readiness
+
 ### November 23, 2025 - Multi-Chain & Production Polish
 **Chain Integration:**
 - ✅ Stable Testnet (Chain ID: 2201) fully integrated alongside ARC Testnet
