@@ -123,23 +123,39 @@ export async function fetchAllPools(
         let token1Name = "Unknown Token";
 
         try {
-          [token0Symbol, token0Decimals, token0Name] = await Promise.all([
-            token0Contract.symbol().catch(() => "UNKNOWN"),
-            token0Contract.decimals().catch(() => 18),
-            token0Contract.name().catch(() => "Unknown Token"),
-          ]);
+          token0Symbol = await token0Contract.symbol().catch(() => "UNKNOWN");
         } catch (error) {
-          console.warn(`Failed to fetch token0 metadata for ${token0Address}, using fallback`);
+          token0Symbol = "UNKNOWN";
         }
 
         try {
-          [token1Symbol, token1Decimals, token1Name] = await Promise.all([
-            token1Contract.symbol().catch(() => "UNKNOWN"),
-            token1Contract.decimals().catch(() => 18),
-            token1Contract.name().catch(() => "Unknown Token"),
-          ]);
+          token0Decimals = await token0Contract.decimals().catch(() => 18);
         } catch (error) {
-          console.warn(`Failed to fetch token1 metadata for ${token1Address}, using fallback`);
+          token0Decimals = 18;
+        }
+
+        try {
+          token0Name = await token0Contract.name().catch(() => `Token ${token0Address.substring(0, 6)}`);
+        } catch (error) {
+          token0Name = `Token ${token0Address.substring(0, 6)}`;
+        }
+
+        try {
+          token1Symbol = await token1Contract.symbol().catch(() => "UNKNOWN");
+        } catch (error) {
+          token1Symbol = "UNKNOWN";
+        }
+
+        try {
+          token1Decimals = await token1Contract.decimals().catch(() => 18);
+        } catch (error) {
+          token1Decimals = 18;
+        }
+
+        try {
+          token1Name = await token1Contract.name().catch(() => `Token ${token1Address.substring(0, 6)}`);
+        } catch (error) {
+          token1Name = `Token ${token1Address.substring(0, 6)}`;
         }
 
         // Skip wrapped token pairs (wUSDC/USDC, wUSDT/gUSDT) - these are wrap tokens, not trading pairs
