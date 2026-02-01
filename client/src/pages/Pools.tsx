@@ -153,7 +153,7 @@ export default function Pools() {
                 <div>
                   <p className="text-xs sm:text-sm text-muted-foreground">Active Pairs</p>
                   <p className="text-xl sm:text-2xl font-bold">
-                    {pools.filter(p => p.tvlUSD > 0).length}
+                    {v2Pools.filter(p => p.tvlUSD > 0).length + v3Pools.filter(p => p.tvlUSD > 0).length}
                   </p>
                 </div>
                 <TrendingUp className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
