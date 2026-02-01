@@ -39,6 +39,10 @@ export function SwapSettings({
   onRecipientAddressChange,
   quoteRefreshInterval = 30,
   onQuoteRefreshIntervalChange,
+  v2Enabled,
+  v3Enabled,
+  onV2EnabledChange,
+  onV3EnabledChange,
   maxBalance, // Destructure maxBalance
   onMaxBalanceClick, // Destructure onMaxBalanceClick
 }: SwapSettingsProps) {
@@ -47,6 +51,8 @@ export function SwapSettings({
   const [customRefreshInterval, setCustomRefreshInterval] = useState(quoteRefreshInterval.toString());
 
   const presetSlippages = [0.1, 0.5, 1.0];
+
+  const bothDisabled = !v2Enabled && !v3Enabled;
 
   const handleSlippageChange = (value: string) => {
     setCustomSlippage(value);
