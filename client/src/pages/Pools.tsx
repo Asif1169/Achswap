@@ -126,7 +126,7 @@ export default function Pools() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs sm:text-sm text-muted-foreground">Total Pools</p>
-                  <p className="text-xl sm:text-2xl font-bold">{pools.length}</p>
+                  <p className="text-xl sm:text-2xl font-bold">{v2Pools.length + v3Pools.length}</p>
                 </div>
                 <Droplets className="h-6 w-6 sm:h-8 sm:w-8 text-blue-500" />
               </div>
