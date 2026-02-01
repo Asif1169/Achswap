@@ -7,6 +7,7 @@ import { TokenSelector } from "@/components/TokenSelector";
 import { SwapSettings } from "@/components/SwapSettings";
 import { TransactionHistory } from "@/components/TransactionHistory";
 import { PathVisualizer, type RouteHop } from "@/components/PathVisualizer";
+import { V3ContractStatus } from "@/components/V3ContractStatus";
 import { useAccount, useBalance, useChainId } from "wagmi";
 import { useToast } from "@/hooks/use-toast";
 import type { Token } from "@shared/schema";
