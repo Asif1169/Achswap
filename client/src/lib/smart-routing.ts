@@ -75,23 +75,19 @@ export async function getV2Quote(
 }
 
 /**
- * Get V3 quote for a swap
+ * Get V3 quote for a swap (single-hop and multi-hop)
  */
 export async function getV3Quote(
   provider: BrowserProvider,
   quoterAddress: string,
   fromToken: Token,
   toToken: Token,
-  amountIn: bigint
+  amountIn: bigint,
+  wrappedTokenAddress?: string
 ): Promise<QuoteResult | null> {
   try {
     const quoter = new Contract(quoterAddress, QUOTER_V2_ABI, provider);
     
-    // Sort tokens for V3
-    const [token0, token1] = sortTokensByAddress(fromToken, toToken);
-    const isForward = fromToken.address.toLowerCase() === token0.address.toLowerCase();
-    
-    // Try all fee tiers and find best one
     const feeTiers = [
       V3_FEE_TIERS.LOW,
       V3_FEE_TIERS.MEDIUM,
@@ -100,6 +96,7 @@ export async function getV3Quote(
     
     let bestQuote: QuoteResult | null = null;
     
+    // Try single-hop routes for all fee tiers
     for (const fee of feeTiers) {
       try {
         const params = {
@@ -107,15 +104,14 @@ export async function getV3Quote(
           tokenOut: toToken.address,
           amountIn: amountIn,
           fee: fee,
-          sqrtPriceLimitX96: 0, // No price limit
+          sqrtPriceLimitX96: 0,
         };
         
         const result = await quoter.quoteExactInputSingle.staticCall(params);
-        const outputAmount = result[0]; // amountOut
-        const gasEstimate = result[3]; // gasEstimate
+        const outputAmount = result[0];
+        const gasEstimate = result[3];
         
         if (!bestQuote || outputAmount > bestQuote.outputAmount) {
-          // Calculate price impact for V3
           const priceImpact = await calculateV3PriceImpact(
             quoter,
             fromToken,
@@ -139,8 +135,70 @@ export async function getV3Quote(
           };
         }
       } catch (error) {
-        // Pool might not exist for this fee tier, continue to next
         continue;
+      }
+    }
+    
+    // Try multi-hop routes if wrapped token provided
+    if (wrappedTokenAddress && wrappedTokenAddress.toLowerCase() !== fromToken.address.toLowerCase() && wrappedTokenAddress.toLowerCase() !== toToken.address.toLowerCase()) {
+      for (const fee1 of feeTiers) {
+        for (const fee2 of feeTiers) {
+          try {
+            const { encodePath } = await import("./v3-utils");
+            const path = encodePath(
+              [fromToken.address, wrappedTokenAddress, toToken.address],
+              [fee1, fee2]
+            );
+            
+            const result = await quoter.quoteExactInput.staticCall(path, amountIn);
+            const outputAmount = result[0];
+            const gasEstimate = result[3];
+            
+            if (!bestQuote || outputAmount > bestQuote.outputAmount) {
+              // Approximate price impact for multi-hop
+              const priceImpact = 0; // TODO: Calculate multi-hop price impact
+              
+              bestQuote = {
+                protocol: "V3",
+                outputAmount,
+                route: [
+                  {
+                    tokenIn: fromToken,
+                    tokenOut: { 
+                      address: wrappedTokenAddress, 
+                      symbol: "wUSDC", 
+                      name: "Wrapped USDC", 
+                      decimals: 18,
+                      logoURI: "/img/logos/wusdc.png",
+                      verified: true,
+                      chainId: fromToken.chainId
+                    } as Token,
+                    protocol: "V3",
+                    fee: fee1,
+                  },
+                  {
+                    tokenIn: { 
+                      address: wrappedTokenAddress, 
+                      symbol: "wUSDC", 
+                      name: "Wrapped USDC", 
+                      decimals: 18,
+                      logoURI: "/img/logos/wusdc.png",
+                      verified: true,
+                      chainId: fromToken.chainId
+                    } as Token,
+                    tokenOut: toToken,
+                    protocol: "V3",
+                    fee: fee2,
+                  },
+                ],
+                priceImpact,
+                gasEstimate,
+              };
+            }
+          } catch (error) {
+            continue;
+          }
+        }
       }
     }
     
