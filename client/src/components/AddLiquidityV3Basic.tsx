@@ -142,36 +142,24 @@ export function AddLiquidityV3Basic() {
         signer
       );
 
-      // Sort tokens
+      // Sort tokens - CRITICAL: V3 requires token0 < token1 by address
       const [token0, token1] = sortTokens(tokenA, tokenB);
       const isToken0A = tokenA.address.toLowerCase() === token0.address.toLowerCase();
 
       const amount0Desired = parseAmount(isToken0A ? amountA : amountB, token0.decimals);
       const amount1Desired = parseAmount(isToken0A ? amountB : amountA, token1.decimals);
 
-      // Get wide range ticks for safety
-      let tickLower, tickUpper;
-      
-      if (poolExists && currentPrice) {
-        const ticks = getWideRangeTicks(currentPrice, token0.decimals, token1.decimals, selectedFee);
-        tickLower = ticks.tickLower;
-        tickUpper = ticks.tickUpper;
-      } else {
-        // For new pools, use full range
-        const { getFullRangeTicks } = await import("@/lib/v3-utils");
-        const ticks = getFullRangeTicks(selectedFee);
-        tickLower = ticks.tickLower;
-        tickUpper = ticks.tickUpper;
+      // Calculate price from amounts for pool initialization
+      const price = getPriceFromAmounts(amount0Desired, amount1Desired, token0.decimals, token1.decimals);
+      const sqrtPriceX96 = priceToSqrtPriceX96(price, token0.decimals, token1.decimals);
 
-        // Initialize pool if it doesn't exist
-        const price = getPriceFromAmounts(amount0Desired, amount1Desired, token0.decimals, token1.decimals);
-        const sqrtPriceX96 = priceToSqrtPriceX96(price, token0.decimals, token1.decimals);
+      // ALWAYS try to create/initialize pool first - this is safe even if pool exists
+      toast({
+        title: "Ensuring pool exists...",
+        description: "Creating or verifying V3 pool",
+      });
 
-        toast({
-          title: "Creating pool...",
-          description: "Initializing new V3 pool",
-        });
-
+      try {
         const createTx = await positionManager.createAndInitializePoolIfNecessary(
           token0.address,
           token1.address,
@@ -179,7 +167,14 @@ export function AddLiquidityV3Basic() {
           sqrtPriceX96
         );
         await createTx.wait();
+      } catch (poolError: any) {
+        // Pool might already exist with different price - that's OK
+        console.log("Pool creation note:", poolError.message);
       }
+
+      // Get ticks - use full range for maximum safety in Basic mode
+      const { getFullRangeTicks } = await import("@/lib/v3-utils");
+      const { tickLower, tickUpper } = getFullRangeTicks(selectedFee);
 
       // Approve tokens
       toast({
