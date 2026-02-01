@@ -396,6 +396,17 @@ export function AddLiquidityV3Advanced() {
             </div>
           </div>
 
+          {/* Price Range Chart */}
+          {tokenA && tokenB && minPrice && maxPrice && parseFloat(minPrice) > 0 && parseFloat(maxPrice) > 0 && (
+            <PriceRangeChart
+              minPrice={parseFloat(minPrice)}
+              maxPrice={parseFloat(maxPrice)}
+              currentPrice={currentPrice || undefined}
+              token0Symbol={tokenA.symbol}
+              token1Symbol={tokenB.symbol}
+            />
+          )}
+
           {/* Range Status */}
           {isInRange !== null && poolExists && (
             <div className={`p-3 rounded-lg border ${
