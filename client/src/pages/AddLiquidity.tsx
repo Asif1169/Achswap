@@ -13,6 +13,9 @@ export default function AddLiquidity() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-2xl">
+      {/* V3 Contract Status */}
+      <V3ContractStatus />
+      
       <Card className="bg-slate-900/50 border-slate-700">
         <CardHeader>
           <CardTitle className="text-2xl md:text-3xl font-bold text-center">
