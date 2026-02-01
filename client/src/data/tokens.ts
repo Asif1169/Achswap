@@ -31,6 +31,43 @@ const arcTestnetTokens: Token[] = [
   }
 ];
 
+// Wrapped token mappings: native -> wrapped address
+export const wrappedTokenMap: Record<number, Record<string, string>> = {
+  5042002: {
+    // USDC (native/zero address) -> wUSDC
+    "0x0000000000000000000000000000000000000000": "0xDe5DB9049a8dd344dC1B7Bbb098f9da60930A6dA",
+  },
+};
+
+// Reverse mapping: wrapped -> native
+export const unwrappedTokenMap: Record<number, Record<string, string>> = {
+  5042002: {
+    "0xDe5DB9049a8dd344dC1B7Bbb098f9da60930A6dA": "0x0000000000000000000000000000000000000000",
+  },
+};
+
+export function getWrappedAddress(chainId: number, tokenAddress: string): string | null {
+  const map = wrappedTokenMap[chainId];
+  if (!map) return null;
+  return map[tokenAddress.toLowerCase()] || map[tokenAddress] || null;
+}
+
+export function getUnwrappedAddress(chainId: number, tokenAddress: string): string | null {
+  const map = unwrappedTokenMap[chainId];
+  if (!map) return null;
+  return map[tokenAddress.toLowerCase()] || map[tokenAddress] || null;
+}
+
+export function isNativeToken(tokenAddress: string): boolean {
+  return tokenAddress === "0x0000000000000000000000000000000000000000";
+}
+
+export function isWrappedToken(chainId: number, tokenAddress: string): boolean {
+  const map = unwrappedTokenMap[chainId];
+  if (!map) return false;
+  return !!map[tokenAddress.toLowerCase()] || !!map[tokenAddress];
+}
+
 // To add more chains: create token arrays for each chain and add them to tokensByChainId
 const tokensByChainId: Record<number, Token[]> = {
   5042002: arcTestnetTokens,
