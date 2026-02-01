@@ -96,6 +96,48 @@ export function SwapSettings({
         </DialogHeader>
 
         <div className="space-y-6 mt-4">
+          {/* Protocol Settings - V2/V3 */}
+          <div className="space-y-3 p-4 bg-slate-800/50 rounded-lg border border-slate-700">
+            <h3 className="text-sm font-semibold text-white mb-3">Protocol Routing</h3>
+            
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label className="text-sm font-medium text-white">Uniswap V2</Label>
+                <p className="text-xs text-slate-400">Classic constant product AMM</p>
+              </div>
+              <Switch
+                checked={v2Enabled}
+                onCheckedChange={onV2EnabledChange}
+                disabled={v2Enabled && !v3Enabled}
+              />
+            </div>
+            
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label className="text-sm font-medium text-white">Uniswap V3</Label>
+                <p className="text-xs text-slate-400">Concentrated liquidity pools</p>
+              </div>
+              <Switch
+                checked={v3Enabled}
+                onCheckedChange={onV3EnabledChange}
+                disabled={v3Enabled && !v2Enabled}
+              />
+            </div>
+
+            {bothDisabled && (
+              <div className="flex items-center gap-2 p-2 bg-red-500/10 border border-red-500/20 rounded text-xs text-red-400">
+                <AlertTriangle className="h-4 w-4 shrink-0" />
+                <span>At least one protocol must be enabled</span>
+              </div>
+            )}
+
+            {v2Enabled && v3Enabled && (
+              <div className="p-2 bg-blue-500/10 border border-blue-500/20 rounded text-xs text-blue-400">
+                Smart routing enabled: Best price will be automatically selected
+              </div>
+            )}
+          </div>
+
           {/* Slippage Tolerance */}
           <div className="space-y-3">
             <Label className="text-sm font-medium text-white">Slippage Tolerance (%)</Label>
