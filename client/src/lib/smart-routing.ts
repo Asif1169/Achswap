@@ -86,6 +86,13 @@ export async function getV3Quote(
   wrappedTokenAddress?: string
 ): Promise<QuoteResult | null> {
   try {
+    // Check if quoter contract exists
+    const code = await provider.getCode(quoterAddress);
+    if (!code || code === "0x" || code === "0x0") {
+      console.warn("V3 Quoter contract not found at", quoterAddress);
+      return null;
+    }
+
     const quoter = new Contract(quoterAddress, QUOTER_V2_ABI, provider);
     
     const feeTiers = [
@@ -135,6 +142,7 @@ export async function getV3Quote(
           };
         }
       } catch (error) {
+        // Pool doesn't exist for this fee tier or other error
         continue;
       }
     }
@@ -155,8 +163,7 @@ export async function getV3Quote(
             const gasEstimate = result[3];
             
             if (!bestQuote || outputAmount > bestQuote.outputAmount) {
-              // Approximate price impact for multi-hop
-              const priceImpact = 0; // TODO: Calculate multi-hop price impact
+              const priceImpact = 0;
               
               bestQuote = {
                 protocol: "V3",
