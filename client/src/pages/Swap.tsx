@@ -509,11 +509,9 @@ export default function Swap() {
   const handleSwap = async () => {
     if (!fromToken || !toToken || !fromAmount || parseFloat(fromAmount) <= 0) return;
 
-    // Check if this is a wrap/unwrap operation (supports both chains)
-    const isWrap = (fromToken.symbol === 'USDC' && toToken.symbol === 'wUSDC') ||
-                   (fromToken.symbol === 'gUSDT' && toToken.symbol === 'wUSDT');
-    const isUnwrap = (fromToken.symbol === 'wUSDC' && toToken.symbol === 'USDC') ||
-                     (fromToken.symbol === 'wUSDT' && toToken.symbol === 'gUSDT');
+    // Check if this is a wrap/unwrap operation for ARC Testnet
+    const isWrap = fromToken.symbol === 'USDC' && toToken.symbol === 'wUSDC';
+    const isUnwrap = fromToken.symbol === 'wUSDC' && toToken.symbol === 'USDC';
 
     if (isWrap) {
       await handleWrap(fromAmount);
@@ -535,185 +533,97 @@ export default function Swap() {
       if (!contracts) {
         throw new Error("Chain contracts not configured");
       }
+      
+      if (!smartRoutingResult || !smartRoutingResult.bestQuote) {
+        throw new Error("No valid quote available");
+      }
 
       const provider = new BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
-
-      const ROUTER_ABI = [
-        "function getAmountsOut(uint amountIn, address[] memory path) public view returns (uint[] memory amounts)",
-        "function swapExactTokensForTokens(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) external returns (uint[] memory amounts)",
-        "function swapExactETHForTokens(uint amountOutMin, address[] calldata path, address to, uint deadline) external payable returns (uint[] memory amounts)",
-        "function swapExactTokensForETH(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) external returns (uint[] memory amounts)"
-      ];
-
-      const router = new Contract(contracts.router, ROUTER_ABI, signer);
+      
+      const bestQuote = smartRoutingResult.bestQuote;
       const amountIn = parseAmount(fromAmount, fromToken.decimals);
-
-      // Build path - use wrapped token for liquidity pool routing
-      let path: string[] = [];
-      const isFromNative = fromToken.address === "0x0000000000000000000000000000000000000000";
-      const isToNative = toToken.address === "0x0000000000000000000000000000000000000000";
-
-      // Get wrapped token for native conversion (already defined above)
-      const wrappedAddress = wrappedToken?.address;
-
-      if (!wrappedAddress) {
-        throw new Error(`${wrappedSymbol} token not found`);
-      }
-
-      // Convert native token addresses to wrapped for pool routing
-      const fromTokenAddress = isFromNative ? wrappedAddress : fromToken.address;
-      const toTokenAddress = isToNative ? wrappedAddress : toToken.address;
-
-      // Build path based on converted addresses
-      if (fromTokenAddress === toTokenAddress) {
-        // Same token (shouldn't happen in UI, but handle it)
-        path = [fromTokenAddress, toTokenAddress];
-      } else if (fromTokenAddress === wrappedAddress || toTokenAddress === wrappedAddress) {
-        // Direct path if one token is wrapped
-        path = [fromTokenAddress, toTokenAddress];
-      } else {
-        // Multi-hop through wrapped token
-        path = [fromTokenAddress, wrappedAddress, toTokenAddress];
-      }
-
-      // Get expected output
-      let amounts;
-      try {
-        amounts = await router.getAmountsOut(amountIn, path);
-      } catch (error) {
-        // If multi-hop fails, try direct path
-        if (path.length > 2) {
-          path = [fromToken.address, toToken.address];
-          try {
-            amounts = await router.getAmountsOut(amountIn, path);
-          } catch {
-            throw new Error(`No liquidity pool exists for this token pair. Try using ${wrappedSymbol} instead of ${nativeSymbol}.`);
-          }
-        } else {
-          throw new Error(`No liquidity pool exists for this token pair. Try using ${wrappedSymbol} instead of ${nativeSymbol}.`);
-        }
-      }
-
-      const amountOutMin = amounts[amounts.length - 1] * BigInt(Math.floor((100 - slippage) * 100)) / 10000n;
-
-      // Deadline from settings
-      const deadlineTimestamp = Math.floor(Date.now() / 1000) + 60 * deadline;
-
-      // Use recipient address if provided, otherwise use connected wallet
-      const recipient = recipientAddress && recipientAddress.startsWith('0x') && recipientAddress.length === 42 
-        ? recipientAddress 
-        : address;
+      const minAmountOut = (bestQuote.outputAmount * BigInt(Math.floor((100 - slippage) * 100))) / 10000n;
+      const deadlineTimestamp = Math.floor(Date.now() / 1000) + (deadline * 60);
+      const recipient = recipientAddress || address;
 
       toast({
-        title: "Swap initiated",
-        description: `Swapping ${fromAmount} ${fromToken.symbol} for ${toToken.symbol}`,
+        title: "Swapping...",
+        description: `Using ${bestQuote.protocol} protocol`,
       });
 
       let tx;
-
-      if (isFromNative) {
-        // Swap native USDC for tokens
-        const gasEstimate = await router.swapExactETHForTokens.estimateGas(
-          amountOutMin,
-          path,
-          recipient,
-          deadlineTimestamp,
-          { value: amountIn }
-        );
-        const gasLimit = (gasEstimate * 150n) / 100n;
-        tx = await router.swapExactETHForTokens(
-          amountOutMin,
-          path,
-          recipient,
-          deadlineTimestamp,
-          { value: amountIn, gasLimit }
-        );
-      } else if (isToNative) {
-        // Swap tokens for native USDC
-        // First approve router to spend tokens
+      
+      if (bestQuote.protocol === "V3") {
+        // V3 Swap
+        const swapRouter = new Contract(contracts.v3.swapRouter, SWAP_ROUTER_V3_ABI, signer);
+        
+        // Check and approve token if needed
         const tokenContract = new Contract(fromToken.address, ERC20_ABI, signer);
-        const allowance = await tokenContract.allowance(address, ROUTER_ADDRESS);
-
+        const allowance = await tokenContract.allowance(address, contracts.v3.swapRouter);
+        
         if (allowance < amountIn) {
-          const approveGasEstimate = await tokenContract.approve.estimateGas(ROUTER_ADDRESS, amountIn);
-          const approveGasLimit = (approveGasEstimate * 150n) / 100n;
-          const approveTx = await tokenContract.approve(ROUTER_ADDRESS, amountIn, { gasLimit: approveGasLimit });
-          const approveReceipt = await approveTx.wait();
-
-          // Refetch balances after approval
-          await Promise.all([refetchFromBalance(), refetchToBalance()]);
-
           toast({
-            title: "Approval successful",
-            description: (
-              <div className="flex items-center gap-2">
-                <span>Token approval confirmed</span>
-                <Button 
-                  size="sm" 
-                  variant="ghost" 
-                  className="h-6 px-2"
-                  onClick={() => openExplorer(approveReceipt.hash)}
-                >
-                  <ExternalLink className="h-3 w-3" />
-                </Button>
-              </div>
-            ),
+            title: "Approval needed",
+            description: "Approving token for V3 swap...",
           });
+          const approveGasEstimate = await tokenContract.approve.estimateGas(contracts.v3.swapRouter, amountIn);
+          const approveGasLimit = (approveGasEstimate * 150n) / 100n;
+          const approveTx = await tokenContract.approve(contracts.v3.swapRouter, amountIn, { gasLimit: approveGasLimit });
+          await approveTx.wait();
         }
-
-        const gasEstimate = await router.swapExactTokensForETH.estimateGas(
-          amountIn,
-          amountOutMin,
-          path,
-          recipient,
-          deadlineTimestamp
-        );
+        
+        // Execute V3 swap
+        const fee = bestQuote.route[0].fee || 3000; // Default to 0.3% if not set
+        
+        const params = {
+          tokenIn: fromToken.address,
+          tokenOut: toToken.address,
+          fee: fee,
+          recipient: recipient,
+          amountIn: amountIn,
+          amountOutMinimum: minAmountOut,
+          sqrtPriceLimitX96: 0,
+        };
+        
+        const gasEstimate = await swapRouter.exactInputSingle.estimateGas(params);
         const gasLimit = (gasEstimate * 150n) / 100n;
-        tx = await router.swapExactTokensForETH(
-          amountIn,
-          amountOutMin,
-          path,
-          recipient,
-          deadlineTimestamp,
-          { gasLimit }
-        );
+        tx = await swapRouter.exactInputSingle(params, { gasLimit });
       } else {
-        // Swap tokens for tokens
-        // First approve router to spend tokens
-        const tokenContract = new Contract(fromToken.address, ERC20_ABI, signer);
-        const allowance = await tokenContract.allowance(address, ROUTER_ADDRESS);
-
-        if (allowance < amountIn) {
-          const approveGasEstimate = await tokenContract.approve.estimateGas(ROUTER_ADDRESS, amountIn);
-          const approveGasLimit = (approveGasEstimate * 150n) / 100n;
-          const approveTx = await tokenContract.approve(ROUTER_ADDRESS, amountIn, { gasLimit: approveGasLimit });
-          const approveReceipt = await approveTx.wait();
-
-          // Refetch balances after approval
-          await Promise.all([refetchFromBalance(), refetchToBalance()]);
-
-          toast({
-            title: "Approval successful",
-            description: (
-              <div className="flex items-center gap-2">
-                <span>Token approval confirmed</span>
-                <Button 
-                  size="sm" 
-                  variant="ghost" 
-                  className="h-6 px-2"
-                  onClick={() => openExplorer(approveReceipt.hash)}
-                >
-                  <ExternalLink className="h-3 w-3" />
-                </Button>
-              </div>
-            ),
-          });
+        // V2 Swap
+        const V2_ROUTER_ABI = [
+          "function swapExactTokensForTokens(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) external returns (uint[] memory amounts)",
+        ];
+        
+        const router = new Contract(contracts.v2.router, V2_ROUTER_ABI, signer);
+        
+        // Build path from route
+        const path = [fromToken.address];
+        for (const hop of bestQuote.route) {
+          if (hop.tokenOut.address !== path[path.length - 1]) {
+            path.push(hop.tokenOut.address);
+          }
         }
-
+        
+        // Check and approve token if needed
+        const tokenContract = new Contract(fromToken.address, ERC20_ABI, signer);
+        const allowance = await tokenContract.allowance(address, contracts.v2.router);
+        
+        if (allowance < amountIn) {
+          toast({
+            title: "Approval needed",
+            description: "Approving token for V2 swap...",
+          });
+          const approveGasEstimate = await tokenContract.approve.estimateGas(contracts.v2.router, amountIn);
+          const approveGasLimit = (approveGasEstimate * 150n) / 100n;
+          const approveTx = await tokenContract.approve(contracts.v2.router, amountIn, { gasLimit: approveGasLimit });
+          await approveTx.wait();
+        }
+        
+        // Execute V2 swap
         const gasEstimate = await router.swapExactTokensForTokens.estimateGas(
           amountIn,
-          amountOutMin,
+          minAmountOut,
           path,
           recipient,
           deadlineTimestamp
@@ -721,7 +631,7 @@ export default function Swap() {
         const gasLimit = (gasEstimate * 150n) / 100n;
         tx = await router.swapExactTokensForTokens(
           amountIn,
-          amountOutMin,
+          minAmountOut,
           path,
           recipient,
           deadlineTimestamp,
@@ -731,20 +641,22 @@ export default function Swap() {
 
       const receipt = await tx.wait();
 
-      // Save transaction to history
+      // Save transaction
       saveTransaction(fromToken, toToken, fromAmount, toAmount, receipt.hash);
 
-      // Refetch balances after swap
+      // Refetch balances
       await Promise.all([refetchFromBalance(), refetchToBalance()]);
 
       setFromAmount("");
       setToAmount("");
+      setSmartRoutingResult(null);
+      setRouteHops([]);
 
       toast({
         title: "Swap successful!",
         description: (
           <div className="flex items-center gap-2">
-            <span>Successfully swapped {fromAmount} {fromToken.symbol} for {toToken.symbol}</span>
+            <span>Swapped {fromAmount} {fromToken.symbol} for {toAmount} {toToken.symbol} via {bestQuote.protocol}</span>
             <Button 
               size="sm" 
               variant="ghost" 
