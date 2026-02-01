@@ -186,7 +186,7 @@ export default function Pools() {
                 <Skeleton key={i} className="h-20 w-full" />
               ))}
             </div>
-          ) : filteredPools.length === 0 ? (
+          ) : filteredV2Pools.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-muted-foreground">
                 {searchQuery ? "No pools found matching your search" : "No pools available"}
