@@ -121,15 +121,18 @@ export default function Swap() {
         return;
       }
 
-      // Handle wrap/unwrap - 1:1 ratio (supports both chains)
-      const isWrap = (fromToken.symbol === 'USDC' && toToken.symbol === 'wUSDC') ||
-                     (fromToken.symbol === 'gUSDT' && toToken.symbol === 'wUSDT');
-      const isUnwrap = (fromToken.symbol === 'wUSDC' && toToken.symbol === 'USDC') ||
-                       (fromToken.symbol === 'wUSDT' && toToken.symbol === 'gUSDT');
+      // Handle wrap/unwrap - 1:1 ratio for ARC Testnet
+      const isWrap = fromToken.symbol === 'USDC' && toToken.symbol === 'wUSDC';
+      const isUnwrap = fromToken.symbol === 'wUSDC' && toToken.symbol === 'USDC';
 
       if (isWrap || isUnwrap) {
         setToAmount(fromAmount);
         setPriceImpact(0);
+        setRouteHops([{
+          tokenIn: fromToken,
+          tokenOut: toToken,
+          protocol: "V2",
+        }]);
         return;
       }
 
@@ -138,105 +141,62 @@ export default function Swap() {
       setIsLoadingQuote(true);
       try {
         const provider = new BrowserProvider(window.ethereum);
-        const ROUTER_ABI = [
-          "function getAmountsOut(uint amountIn, address[] memory path) public view returns (uint[] memory amounts)"
-        ];
-
-        const router = new Contract(contracts.router, ROUTER_ABI, provider);
-        const amountIn = parseAmount(fromAmount, fromToken.decimals);
-
-        // Build path - use wrapped token for liquidity pool routing
-        let path: string[] = [];
-        const isFromNative = fromToken.address === "0x0000000000000000000000000000000000000000";
-        const isToNative = toToken.address === "0x0000000000000000000000000000000000000000";
-
-        // Get wrapped token address for routing (wUSDC for ARC, wUSDT for Stable)
-        const wrappedSymbol = chainId === 2201 ? 'wUSDT' : 'wUSDC';
-        const wrappedTokenData = tokens.find(t => t.symbol === wrappedSymbol);
+        
+        // Get wrapped token address for routing
+        const wrappedTokenData = tokens.find(t => t.symbol === 'wUSDC');
         const wrappedAddress = wrappedTokenData?.address;
 
         if (!wrappedAddress) {
-          throw new Error(`${wrappedSymbol} token not found`);
+          throw new Error('wUSDC token not found');
         }
 
-        // Convert native token addresses to wrapped for pool routing
-        const fromTokenAddress = isFromNative ? wrappedAddress : fromToken.address;
-        const toTokenAddress = isToNative ? wrappedAddress : toToken.address;
-
-        // Build path based on converted addresses
-        if (fromTokenAddress === toTokenAddress) {
-          // Same token (shouldn't happen in UI, but handle it)
-          path = [fromTokenAddress, toTokenAddress];
-        } else if (fromTokenAddress === wrappedAddress || toTokenAddress === wrappedAddress) {
-          // Direct path if one token is wrapped
-          path = [fromTokenAddress, toTokenAddress];
-        } else {
-          // Multi-hop through wrapped token
-          path = [fromTokenAddress, wrappedAddress, toTokenAddress];
+        const amountIn = parseAmount(fromAmount, fromToken.decimals);
+        
+        // Check if both protocols are disabled
+        if (!v2Enabled && !v3Enabled) {
+          toast({
+            title: "No protocols enabled",
+            description: "Please enable at least one protocol in settings",
+            variant: "destructive",
+          });
+          setToAmount("");
+          setPriceImpact(null);
+          setRouteHops([]);
+          return;
         }
 
-        // Save routing path for visualization
-        setRoutingPath(path);
+        // Get smart route quote
+        const result = await getSmartRouteQuote(
+          provider,
+          contracts.v2.router,
+          contracts.v3.quoter02,
+          fromToken,
+          toToken,
+          amountIn,
+          wrappedAddress,
+          v2Enabled,
+          v3Enabled
+        );
 
-        let amounts;
-        try {
-          amounts = await router.getAmountsOut(amountIn, path);
-        } catch (error) {
-          // If multi-hop fails, try direct path
-          if (path.length > 2) {
-            path = [fromToken.address, toToken.address];
-            try {
-              amounts = await router.getAmountsOut(amountIn, path);
-            } catch {
-              throw error;
-            }
-          } else {
-            throw error;
-          }
+        if (!result || !result.bestQuote) {
+          setToAmount("");
+          setPriceImpact(null);
+          setRouteHops([]);
+          return;
         }
 
-        const outputAmount = formatAmount(amounts[amounts.length - 1], toToken.decimals);
+        // Update state with best route
+        setSmartRoutingResult(result);
+        const outputAmount = formatAmount(result.bestQuote.outputAmount, toToken.decimals);
         setToAmount(outputAmount);
-
-        // Calculate price impact using minimum amount comparison
-        const fromAmountBigInt = parseAmount(fromAmount, fromToken.decimals);
-        const outputAmountBigInt = amounts[amounts.length - 1];
-
-        try {
-          // Use mid-point calculation for better precision with small amounts
-          // Get quote for 50% of the input amount
-          const halfAmountBigInt = fromAmountBigInt / 2n;
-          
-          if (halfAmountBigInt > 0n) {
-            const halfAmountQuotes = await router.getAmountsOut(halfAmountBigInt, path);
-            const halfAmountOutput = halfAmountQuotes[halfAmountQuotes.length - 1];
-            
-            // Double the output from half amount to get expected linear output
-            const expectedOutput = halfAmountOutput * 2n;
-            
-            // Calculate price impact as deviation from linear expectation
-            if (expectedOutput > 0n && outputAmountBigInt > 0n) {
-              const impactBasisPoints = expectedOutput > outputAmountBigInt
-                ? ((expectedOutput - outputAmountBigInt) * 10000n) / expectedOutput
-                : ((outputAmountBigInt - expectedOutput) * 10000n) / expectedOutput;
-
-              const impact = Number(impactBasisPoints) / 100;
-              setPriceImpact(Math.max(0, Math.abs(impact))); // Ensure non-negative
-            } else {
-              setPriceImpact(0);
-            }
-          } else {
-            setPriceImpact(0);
-          }
-        } catch (priceImpactError) {
-          console.error('Price impact calculation failed:', priceImpactError);
-          // Fallback to 0 impact if calculation fails
-          setPriceImpact(0);
-        }
+        setPriceImpact(result.bestQuote.priceImpact);
+        setRouteHops(result.bestQuote.route);
       } catch (error) {
         console.error('Failed to fetch quote:', error);
         setToAmount("");
         setPriceImpact(null);
+        setRouteHops([]);
+        setSmartRoutingResult(null);
       } finally {
         setIsLoadingQuote(false);
       }
@@ -248,7 +208,7 @@ export default function Swap() {
     const intervalId = setInterval(fetchQuote, quoteRefreshInterval * 1000);
 
     return () => clearInterval(intervalId);
-  }, [fromAmount, fromToken, toToken, tokens, quoteRefreshInterval, contracts, chainId])
+  }, [fromAmount, fromToken, toToken, tokens, quoteRefreshInterval, contracts, chainId, v2Enabled, v3Enabled, toast]);
 
   const loadTokens = async () => {
     try {
