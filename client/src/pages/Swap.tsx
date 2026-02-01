@@ -804,6 +804,9 @@ export default function Swap() {
 
   return (
     <div className="container max-w-md mx-auto px-4 py-4 md:py-8 fade-in">
+      {/* V3 Contract Status */}
+      <V3ContractStatus />
+      
       <Card className="border-border/40 shadow-2xl backdrop-blur-xl bg-card/95 card-hover overflow-hidden relative">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-blue-500/5 pointer-events-none"></div>
         <CardHeader className="space-y-1 pb-4 md:pb-6 relative z-10">
