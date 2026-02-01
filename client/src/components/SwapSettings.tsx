@@ -3,8 +3,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { X } from "lucide-react"; // Assuming X is imported from lucide-react
+import { X, AlertTriangle } from "lucide-react";
 
 interface SwapSettingsProps {
   open: boolean;
@@ -17,6 +18,11 @@ interface SwapSettingsProps {
   onRecipientAddressChange: (value: string) => void;
   quoteRefreshInterval?: number;
   onQuoteRefreshIntervalChange?: (value: number) => void;
+  // V2/V3 protocol settings
+  v2Enabled: boolean;
+  v3Enabled: boolean;
+  onV2EnabledChange: (enabled: boolean) => void;
+  onV3EnabledChange: (enabled: boolean) => void;
   // Add these props for max balance functionality
   maxBalance?: number;
   onMaxBalanceClick?: () => void;
