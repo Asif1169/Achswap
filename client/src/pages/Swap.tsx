@@ -964,32 +964,27 @@ export default function Swap() {
                       </span>
                     </div>
                     
-                    {routingPath && routingPath.length > 0 && (
-                      <div className="pt-3 border-t border-border/40 mt-3 space-y-2">
-                        <span className="text-xs text-muted-foreground block font-medium">Swap Route</span>
-                        <div className="flex items-center justify-center gap-1.5 flex-wrap bg-muted/30 rounded-lg p-3 border border-primary/20">
-                          {routingPath.map((tokenAddress, idx) => {
-                            const routeToken = tokens.find(t => t.address.toLowerCase() === tokenAddress.toLowerCase());
-                            return (
-                              <div key={idx} className="flex items-center gap-1.5">
-                                <div className="flex items-center gap-1 bg-primary/10 rounded-full px-2.5 py-1.5 hover:bg-primary/20 transition-colors">
-                                  {routeToken?.logoURI ? (
-                                    <img 
-                                      src={routeToken.logoURI} 
-                                      alt={routeToken.symbol} 
-                                      className="w-5 h-5 rounded-full ring-1 ring-primary/30" 
-                                      onError={(e) => e.currentTarget.style.display = 'none'}
-                                    />
-                                  ) : (
-                                    <div className="w-5 h-5 rounded-full bg-muted flex items-center justify-center text-[10px] font-bold text-muted-foreground">?</div>
-                                  )}
-                                  <span className="text-xs font-semibold text-foreground">{routeToken?.symbol || '???'}</span>
-                                </div>
-                                {idx < routingPath.length - 1 && <ArrowRight className="h-4 w-4 text-primary/60 mx-0.5" />}
-                              </div>
-                            );
-                          })}
-                        </div>
+                    {routeHops && routeHops.length > 0 && (
+                      <div className="pt-3 border-t border-border/40 mt-3">
+                        <PathVisualizer route={routeHops} />
+                        
+                        {/* Show V2 vs V3 comparison if both quotes available */}
+                        {smartRoutingResult && smartRoutingResult.v2Quote && smartRoutingResult.v3Quote && (
+                          <div className="mt-3 p-2 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                            <div className="flex items-center gap-2 text-xs">
+                              <Zap className="h-3 w-3 text-blue-400" />
+                              <span className="text-blue-400 font-medium">
+                                Smart Routing: {smartRoutingResult.bestQuote.protocol} selected 
+                                ({formatAmount(smartRoutingResult.bestQuote.outputAmount, toToken?.decimals || 18)} vs {formatAmount(
+                                  smartRoutingResult.bestQuote.protocol === "V3" 
+                                    ? smartRoutingResult.v2Quote.outputAmount 
+                                    : smartRoutingResult.v3Quote.outputAmount,
+                                  toToken?.decimals || 18
+                                )})
+                              </span>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
