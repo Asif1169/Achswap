@@ -3,14 +3,12 @@ import { useChainId } from "wagmi";
 import { BrowserProvider } from "ethers";
 import { getContractsForChain } from "@/lib/contracts";
 import { verifyV3Contracts } from "@/lib/contract-verification";
-import { useV3Status } from "@/lib/v3-status-store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertCircle, CheckCircle, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export function V3ContractStatus() {
   const chainId = useChainId();
-  const { setV3Available } = useV3Status();
   const [status, setStatus] = useState<{
     checking: boolean;
     exists: boolean;
@@ -34,9 +32,6 @@ export function V3ContractStatus() {
         missing: result.missing,
         details: result.details,
       });
-      
-      // Update global V3 availability status
-      setV3Available(result.exists);
     } catch (error) {
       console.error("Error checking V3 contracts:", error);
       setStatus({
@@ -45,7 +40,6 @@ export function V3ContractStatus() {
         missing: ["Unable to verify contracts"],
         details: {},
       });
-      setV3Available(false);
     }
   };
 
