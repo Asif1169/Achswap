@@ -1,20 +1,25 @@
 
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RefreshCw, Search, TrendingUp, Droplets } from "lucide-react";
 import { useChainId } from "wagmi";
 import { fetchAllPools, calculateTotalTVL, type PoolData } from "@/lib/pool-utils";
+import { fetchAllV3Pools, calculateV3TotalTVL, type V3PoolData } from "@/lib/v3-pool-utils";
 import { getContractsForChain } from "@/lib/contracts";
 import { getTokensByChainId } from "@/data/tokens";
 
 export default function Pools() {
-  const [pools, setPools] = useState<PoolData[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [v2Pools, setV2Pools] = useState<PoolData[]>([]);
+  const [v3Pools, setV3Pools] = useState<V3PoolData[]>([]);
+  const [isLoadingV2, setIsLoadingV2] = useState(false);
+  const [isLoadingV3, setIsLoadingV3] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [totalTVL, setTotalTVL] = useState(0);
+  const [v2TotalTVL, setV2TotalTVL] = useState(0);
+  const [v3TotalTVL, setV3TotalTVL] = useState(0);
   
   const chainId = useChainId();
   const contracts = chainId ? getContractsForChain(chainId) : null;
@@ -22,32 +27,64 @@ export default function Pools() {
 
   useEffect(() => {
     if (chainId && contracts) {
-      loadPools();
+      loadAllPools();
     }
   }, [chainId]);
 
-  const loadPools = async () => {
+  const loadAllPools = async () => {
+    loadV2Pools();
+    loadV3Pools();
+  };
+
+  const loadV2Pools = async () => {
     if (!contracts || !chainId) return;
 
-    setIsLoading(true);
+    setIsLoadingV2(true);
     try {
-      const poolData = await fetchAllPools(contracts.factory, chainId, tokens);
-      setPools(poolData);
-      setTotalTVL(calculateTotalTVL(poolData));
+      const poolData = await fetchAllPools(contracts.v2.factory, chainId, tokens);
+      setV2Pools(poolData);
+      setV2TotalTVL(calculateTotalTVL(poolData));
     } catch (error) {
-      console.error("Failed to load pools:", error);
+      console.error("Failed to load V2 pools:", error);
     } finally {
-      setIsLoading(false);
+      setIsLoadingV2(false);
     }
   };
 
-  const filteredPools = pools.filter(pool => {
+  const loadV3Pools = async () => {
+    if (!contracts || !chainId) return;
+
+    setIsLoadingV3(true);
+    try {
+      const poolData = await fetchAllV3Pools(contracts.v3.factory, chainId, tokens);
+      setV3Pools(poolData);
+      setV3TotalTVL(calculateV3TotalTVL(poolData));
+    } catch (error) {
+      console.error("Failed to load V3 pools:", error);
+    } finally {
+      setIsLoadingV3(false);
+    }
+  };
+
+  const filteredV2Pools = v2Pools.filter(pool => {
     const query = searchQuery.toLowerCase();
     return (
       pool.token0.symbol.toLowerCase().includes(query) ||
       pool.token1.symbol.toLowerCase().includes(query) ||
       pool.token0.name.toLowerCase().includes(query) ||
       pool.token1.name.toLowerCase().includes(query)
+    );
+  });
+
+  const filteredV3Pools = v3Pools.filter(pool => {
+    const query = searchQuery.toLowerCase();
+    return (
+      pool.token0.symbol.toLowerCase().includes(query) ||
+      pool.token1.symbol.toLowerCase().includes(query) ||
+      pool.token0.name.toLowerCase().includes(query) ||
+      pool.token1.name.toLowerCase().includes(query)
+    );
+  });
     );
   });
 
