@@ -358,7 +358,7 @@ export function AddLiquidityV2() {
       const signer = await provider.getSigner();
 
       if (!contracts) throw new Error("Chain contracts not configured");
-      const router = new Contract(contracts.router, ROUTER_ABI, signer);
+      const router = new Contract(contracts.v2.router, ROUTER_ABI, signer);
 
       // For new pools, use 0 minimum amounts. For existing pools, use 5% slippage tolerance
       let amountAMin: bigint;
@@ -417,12 +417,12 @@ export function AddLiquidityV2() {
 
         // Approve token (if not native)
         const tokenContract = new Contract(token.address, ERC20_ABI, signer);
-        const allowance = await tokenContract.allowance(address, contracts.router);
+        const allowance = await tokenContract.allowance(address, contracts.v2.router);
 
         if (allowance < tokenAmount) {
-          const approveGasEstimate = await tokenContract.approve.estimateGas(contracts.router, tokenAmount);
+          const approveGasEstimate = await tokenContract.approve.estimateGas(contracts.v2.router, tokenAmount);
           const approveGasLimit = (approveGasEstimate * 150n) / 100n;
-          const approveTx = await tokenContract.approve(contracts.router, tokenAmount, { gasLimit: approveGasLimit });
+          const approveTx = await tokenContract.approve(contracts.v2.router, tokenAmount, { gasLimit: approveGasLimit });
           const approveReceipt = await approveTx.wait();
 
           // Refetch balances after approval
@@ -471,13 +471,13 @@ export function AddLiquidityV2() {
         const tokenAContract = new Contract(tokenAAddress, ERC20_ABI, signer);
         const tokenBContract = new Contract(tokenBAddress, ERC20_ABI, signer);
 
-        const allowanceA = await tokenAContract.allowance(address, contracts.router);
-        const allowanceB = await tokenBContract.allowance(address, contracts.router);
+        const allowanceA = await tokenAContract.allowance(address, contracts.v2.router);
+        const allowanceB = await tokenBContract.allowance(address, contracts.v2.router);
 
         if (allowanceA < amountADesired) {
-          const approveGasEstimate = await tokenAContract.approve.estimateGas(contracts.router, amountADesired);
+          const approveGasEstimate = await tokenAContract.approve.estimateGas(contracts.v2.router, amountADesired);
           const approveGasLimit = (approveGasEstimate * 150n) / 100n;
-          const approveTx = await tokenAContract.approve(contracts.router, amountADesired, { gasLimit: approveGasLimit });
+          const approveTx = await tokenAContract.approve(contracts.v2.router, amountADesired, { gasLimit: approveGasLimit });
           const approveReceipt = await approveTx.wait();
 
           // Refetch balances after approval
@@ -502,9 +502,9 @@ export function AddLiquidityV2() {
         }
 
         if (allowanceB < amountBDesired) {
-          const approveGasEstimate = await tokenBContract.approve.estimateGas(contracts.router, amountBDesired);
+          const approveGasEstimate = await tokenBContract.approve.estimateGas(contracts.v2.router, amountBDesired);
           const approveGasLimit = (approveGasEstimate * 150n) / 100n;
-          const approveTx = await tokenBContract.approve(contracts.router, amountBDesired, { gasLimit: approveGasLimit });
+          const approveTx = await tokenBContract.approve(contracts.v2.router, amountBDesired, { gasLimit: approveGasLimit });
           const approveReceipt = await approveTx.wait();
 
           // Refetch balances after approval
