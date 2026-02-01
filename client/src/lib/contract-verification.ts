@@ -6,8 +6,9 @@ import { BrowserProvider } from "ethers";
 export async function contractExists(provider: BrowserProvider, address: string): Promise<boolean> {
   try {
     const code = await provider.getCode(address);
-    return code !== "0x";
+    return code !== "0x" && code !== "0x0";
   } catch (error) {
+    console.error(`Error checking contract at ${address}:`, error);
     return false;
   }
 }
@@ -24,20 +25,28 @@ export async function verifyV3Contracts(
     quoter02: string;
     migrator: string;
   }
-): Promise<{ exists: boolean; missing: string[] }> {
-  const checks = await Promise.all([
-    contractExists(provider, contracts.factory),
-    contractExists(provider, contracts.swapRouter),
-    contractExists(provider, contracts.nonfungiblePositionManager),
-    contractExists(provider, contracts.quoter02),
-    contractExists(provider, contracts.migrator),
-  ]);
+): Promise<{ exists: boolean; missing: string[]; details: Record<string, boolean> }> {
+  const contractEntries = Object.entries(contracts);
+  const results = await Promise.allSettled(
+    contractEntries.map(([_, address]) => contractExists(provider, address))
+  );
 
-  const contractNames = ["factory", "swapRouter", "nonfungiblePositionManager", "quoter02", "migrator"];
-  const missing = contractNames.filter((_, index) => !checks[index]);
+  const details: Record<string, boolean> = {};
+  const missing: string[] = [];
+
+  contractEntries.forEach(([name, address], index) => {
+    const result = results[index];
+    const exists = result.status === "fulfilled" && result.value === true;
+    details[name] = exists;
+    
+    if (!exists) {
+      missing.push(`${name} (${address})`);
+    }
+  });
 
   return {
     exists: missing.length === 0,
     missing,
+    details,
   };
 }
