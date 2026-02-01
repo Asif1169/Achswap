@@ -407,6 +407,7 @@ export function AddLiquidityV3Basic() {
           setTokenA(token);
           setShowTokenASelector(false);
         }}
+        tokens={tokens}
         selectedToken={tokenA}
         otherToken={tokenB}
       />
@@ -418,6 +419,7 @@ export function AddLiquidityV3Basic() {
           setTokenB(token);
           setShowTokenBSelector(false);
         }}
+        tokens={tokens}
         selectedToken={tokenB}
         otherToken={tokenA}
       />
