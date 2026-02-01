@@ -79,15 +79,14 @@ export function AddLiquidityV2() {
         if (!contracts) return;
 
         const provider = new BrowserProvider(window.ethereum);
-        const factory = new Contract(contracts.factory, FACTORY_ABI, provider);
+        const factory = new Contract(contracts.v2.factory, FACTORY_ABI, provider);
 
-        // Get wrapped token for native conversion (wUSDC for ARC, wUSDT for Stable)
-        const wrappedSymbol = chainId === 2201 ? 'wUSDT' : 'wUSDC';
-        const wrappedToken = tokens.find(t => t.symbol === wrappedSymbol);
+        // Get wrapped token for ARC Testnet
+        const wrappedToken = tokens.find(t => t.symbol === 'wUSDC');
         const wrappedAddress = wrappedToken?.address;
 
         if (!wrappedAddress) {
-          console.error(`${wrappedSymbol} token not found`);
+          console.error('wUSDC token not found');
           setPairExists(false);
           setReserveA(0n);
           setReserveB(0n);
