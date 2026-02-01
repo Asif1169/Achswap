@@ -29,7 +29,7 @@ export const supportedChains = [arcTestnet];
 
 export const config = getDefaultConfig({
   appName: 'Achswap',
-  projectId: import.meta.env.VITE_WALLETCONNECT_PROJECT_ID!,
+  projectId: import.meta.env.VITE_WALLETCONNECT_PROJECT_ID || 'demo-project-id-12345abcdef',
   chains: supportedChains as any,
   ssr: false,
 });
