@@ -14,6 +14,7 @@ import { getContractsForChain } from "@/lib/contracts";
 import { NONFUNGIBLE_POSITION_MANAGER_ABI, V3_FACTORY_ABI, V3_POOL_ABI, V3_FEE_TIERS, FEE_TIER_LABELS } from "@/lib/abis/v3";
 import { priceToSqrtPriceX96, priceToTick, tickToPrice, getNearestUsableTick, getTickSpacing, sortTokens, isPositionInRange } from "@/lib/v3-utils";
 import { AlertTriangle, Zap, ExternalLink, TrendingUp, TrendingDown } from "lucide-react";
+import { PriceRangeChart } from "./PriceRangeChart";
 
 const ERC20_ABI = [
   "function approve(address spender, uint256 amount) returns (bool)",
