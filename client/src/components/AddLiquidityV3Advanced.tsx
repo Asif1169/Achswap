@@ -1,0 +1,462 @@
+import { useState, useEffect } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { TokenSelector } from "@/components/TokenSelector";
+import { useAccount, useChainId } from "wagmi";
+import { useToast } from "@/hooks/use-toast";
+import type { Token } from "@shared/schema";
+import { Contract, BrowserProvider } from "ethers";
+import { getTokensByChainId } from "@/data/tokens";
+import { formatAmount, parseAmount } from "@/lib/decimal-utils";
+import { getContractsForChain } from "@/lib/contracts";
+import { NONFUNGIBLE_POSITION_MANAGER_ABI, V3_FACTORY_ABI, V3_POOL_ABI, V3_FEE_TIERS, FEE_TIER_LABELS } from "@/lib/abis/v3";
+import { priceToSqrtPriceX96, priceToTick, tickToPrice, getNearestUsableTick, getTickSpacing, sortTokens, isPositionInRange } from "@/lib/v3-utils";
+import { AlertTriangle, Zap, ExternalLink, TrendingUp, TrendingDown } from "lucide-react";
+
+const ERC20_ABI = [
+  "function approve(address spender, uint256 amount) returns (bool)",
+  "function allowance(address owner, address spender) view returns (uint256)",
+];
+
+export function AddLiquidityV3Advanced() {
+  const [tokenA, setTokenA] = useState<Token | null>(null);
+  const [tokenB, setTokenB] = useState<Token | null>(null);
+  const [amountA, setAmountA] = useState("");
+  const [amountB, setAmountB] = useState("");
+  const [showTokenASelector, setShowTokenASelector] = useState(false);
+  const [showTokenBSelector, setShowTokenBSelector] = useState(false);
+  const [tokens, setTokens] = useState<Token[]>([]);
+  const [selectedFee, setSelectedFee] = useState<number>(V3_FEE_TIERS.MEDIUM);
+  const [minPrice, setMinPrice] = useState("");
+  const [maxPrice, setMaxPrice] = useState("");
+  const [isAdding, setIsAdding] = useState(false);
+  const [poolExists, setPoolExists] = useState(false);
+  const [currentPrice, setCurrentPrice] = useState<number | null>(null);
+  const [currentTick, setCurrentTick] = useState<number | null>(null);
+
+  const { address, isConnected } = useAccount();
+  const chainId = useChainId();
+  const { toast } = useToast();
+
+  const contracts = chainId ? getContractsForChain(chainId) : null;
+
+  const feeOptions = [
+    { value: V3_FEE_TIERS.LOWEST, label: "0.01%" },
+    { value: V3_FEE_TIERS.LOW, label: "0.05%" },
+    { value: V3_FEE_TIERS.MEDIUM, label: "0.3%" },
+    { value: V3_FEE_TIERS.HIGH, label: "1%" },
+    { value: V3_FEE_TIERS.ULTRA_HIGH, label: "10%" },
+  ];
+
+  // Load tokens
+  useEffect(() => {
+    if (!chainId) return;
+    const chainTokens = getTokensByChainId(chainId);
+    setTokens(chainTokens);
+  }, [chainId]);
+
+  // Set default tokens
+  useEffect(() => {
+    if (tokens.length === 0) return;
+    if (!tokenA) {
+      const usdc = tokens.find(t => t.symbol === 'USDC');
+      if (usdc) setTokenA(usdc);
+    }
+    if (!tokenB) {
+      const achs = tokens.find(t => t.symbol === 'ACHS');
+      if (achs) setTokenB(achs);
+    }
+  }, [tokens, tokenA, tokenB]);
+
+  // Check pool and get current price
+  useEffect(() => {
+    const checkPool = async () => {
+      if (!tokenA || !tokenB || !contracts || !window.ethereum) return;
+
+      try {
+        const provider = new BrowserProvider(window.ethereum);
+        const factory = new Contract(contracts.v3.factory, V3_FACTORY_ABI, provider);
+
+        const [token0, token1] = sortTokens(tokenA, tokenB);
+        const poolAddress = await factory.getPool(token0.address, token1.address, selectedFee);
+
+        if (poolAddress && poolAddress !== "0x0000000000000000000000000000000000000000") {
+          setPoolExists(true);
+
+          const pool = new Contract(poolAddress, V3_POOL_ABI, provider);
+          const slot0 = await pool.slot0();
+          const sqrtPriceX96 = slot0[0];
+          const tick = slot0[1];
+
+          const price = (Number(sqrtPriceX96) / (2 ** 96)) ** 2;
+          const adjustedPrice = price / (10 ** (token0.decimals - token1.decimals));
+
+          setCurrentPrice(adjustedPrice);
+          setCurrentTick(Number(tick));
+
+          // Set default range around current price if not set
+          if (!minPrice && !maxPrice) {
+            const lowerPrice = (adjustedPrice * 0.8).toFixed(6);
+            const upperPrice = (adjustedPrice * 1.2).toFixed(6);
+            setMinPrice(lowerPrice);
+            setMaxPrice(upperPrice);
+          }
+        } else {
+          setPoolExists(false);
+          setCurrentPrice(null);
+          setCurrentTick(null);
+        }
+      } catch (error) {
+        console.error("Error checking pool:", error);
+        setPoolExists(false);
+      }
+    };
+
+    checkPool();
+  }, [tokenA, tokenB, selectedFee, contracts]);
+
+  const handleAddLiquidity = async () => {
+    if (!tokenA || !tokenB || !amountA || !amountB || !minPrice || !maxPrice || !address || !contracts || !window.ethereum) return;
+
+    const minPriceFloat = parseFloat(minPrice);
+    const maxPriceFloat = parseFloat(maxPrice);
+
+    if (minPriceFloat <= 0 || maxPriceFloat <= 0 || minPriceFloat >= maxPriceFloat) {
+      toast({
+        title: "Invalid price range",
+        description: "Min price must be less than max price and both must be positive",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsAdding(true);
+    try {
+      const provider = new BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+
+      const positionManager = new Contract(
+        contracts.v3.nonfungiblePositionManager,
+        NONFUNGIBLE_POSITION_MANAGER_ABI,
+        signer
+      );
+
+      const [token0, token1] = sortTokens(tokenA, tokenB);
+      const isToken0A = tokenA.address.toLowerCase() === token0.address.toLowerCase();
+
+      const amount0Desired = parseAmount(isToken0A ? amountA : amountB, token0.decimals);
+      const amount1Desired = parseAmount(isToken0A ? amountB : amountA, token1.decimals);
+
+      // Convert prices to ticks
+      const tickSpacing = getTickSpacing(selectedFee);
+      const tickLower = getNearestUsableTick(
+        priceToTick(minPriceFloat, token0.decimals, token1.decimals),
+        tickSpacing
+      );
+      const tickUpper = getNearestUsableTick(
+        priceToTick(maxPriceFloat, token0.decimals, token1.decimals),
+        tickSpacing
+      );
+
+      // Create pool if it doesn't exist
+      if (!poolExists) {
+        const midPrice = (minPriceFloat + maxPriceFloat) / 2;
+        const sqrtPriceX96 = priceToSqrtPriceX96(midPrice, token0.decimals, token1.decimals);
+
+        toast({
+          title: "Creating pool...",
+          description: "Initializing new V3 pool",
+        });
+
+        const createTx = await positionManager.createAndInitializePoolIfNecessary(
+          token0.address,
+          token1.address,
+          selectedFee,
+          sqrtPriceX96
+        );
+        await createTx.wait();
+      }
+
+      // Approve tokens
+      toast({
+        title: "Approving tokens...",
+        description: "Please approve token spending",
+      });
+
+      const token0Contract = new Contract(token0.address, ERC20_ABI, signer);
+      const token1Contract = new Contract(token1.address, ERC20_ABI, signer);
+
+      const allowance0 = await token0Contract.allowance(address, contracts.v3.nonfungiblePositionManager);
+      if (allowance0 < amount0Desired) {
+        const approveTx = await token0Contract.approve(contracts.v3.nonfungiblePositionManager, amount0Desired);
+        await approveTx.wait();
+      }
+
+      const allowance1 = await token1Contract.allowance(address, contracts.v3.nonfungiblePositionManager);
+      if (allowance1 < amount1Desired) {
+        const approveTx = await token1Contract.approve(contracts.v3.nonfungiblePositionManager, amount1Desired);
+        await approveTx.wait();
+      }
+
+      // Mint position with 2% slippage
+      const amount0Min = (amount0Desired * 98n) / 100n;
+      const amount1Min = (amount1Desired * 98n) / 100n;
+      const deadline = Math.floor(Date.now() / 1000) + 1200;
+
+      toast({
+        title: "Adding liquidity...",
+        description: "Creating V3 position with custom range",
+      });
+
+      const params = {
+        token0: token0.address,
+        token1: token1.address,
+        fee: selectedFee,
+        tickLower,
+        tickUpper,
+        amount0Desired,
+        amount1Desired,
+        amount0Min,
+        amount1Min,
+        recipient: address,
+        deadline,
+      };
+
+      const gasEstimate = await positionManager.mint.estimateGas(params);
+      const gasLimit = (gasEstimate * 150n) / 100n;
+      const tx = await positionManager.mint(params, { gasLimit });
+      const receipt = await tx.wait();
+
+      setAmountA("");
+      setAmountB("");
+
+      toast({
+        title: "Liquidity added!",
+        description: (
+          <div className="flex items-center gap-2">
+            <span>Successfully added V3 liquidity (Advanced Mode)</span>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-6 px-2"
+              onClick={() => window.open(`${contracts.explorer}${receipt.hash}`, '_blank')}
+            >
+              <ExternalLink className="h-3 w-3" />
+            </Button>
+          </div>
+        ),
+      });
+    } catch (error: any) {
+      console.error("Add liquidity error:", error);
+      toast({
+        title: "Failed to add liquidity",
+        description: error.reason || error.message || "Transaction failed",
+        variant: "destructive",
+      });
+    } finally {
+      setIsAdding(false);
+    }
+  };
+
+  // Check if position is in range
+  const isInRange = currentTick !== null && minPrice && maxPrice && tokenA && tokenB
+    ? (() => {
+        const [token0, token1] = sortTokens(tokenA, tokenB);
+        const tickLower = priceToTick(parseFloat(minPrice), token0.decimals, token1.decimals);
+        const tickUpper = priceToTick(parseFloat(maxPrice), token0.decimals, token1.decimals);
+        return isPositionInRange(currentTick, tickLower, tickUpper);
+      })()
+    : null;
+
+  return (
+    <div className="space-y-4">
+      {/* Warning Banner */}
+      <div className="flex items-start gap-3 p-4 bg-orange-500/10 border border-orange-500/20 rounded-lg">
+        <AlertTriangle className="h-5 w-5 text-orange-400 shrink-0 mt-0.5" />
+        <div className="space-y-1">
+          <h3 className="font-semibold text-orange-400 text-sm">Advanced Mode - Full Control</h3>
+          <p className="text-xs text-slate-300">
+            You have full control over price ranges and ticks. Incorrect settings may result in capital inefficiency or losses. Use with caution.
+          </p>
+        </div>
+      </div>
+
+      {/* Token Selection */}
+      <Card className="bg-slate-900 border-slate-700">
+        <CardContent className="p-6 space-y-4">
+          <div className="space-y-2">
+            <Label className="text-sm text-slate-400">Token A</Label>
+            <div className="flex gap-2">
+              <Input
+                type="number"
+                placeholder="0.00"
+                value={amountA}
+                onChange={(e) => setAmountA(e.target.value)}
+                className="flex-1 bg-slate-800 border-slate-600"
+              />
+              <Button variant="outline" onClick={() => setShowTokenASelector(true)} className="min-w-[120px]">
+                {tokenA ? (
+                  <div className="flex items-center gap-2">
+                    {tokenA.logoURI && <img src={tokenA.logoURI} alt={tokenA.symbol} className="w-5 h-5 rounded-full" />}
+                    <span>{tokenA.symbol}</span>
+                  </div>
+                ) : (
+                  <span>Select Token</span>
+                )}
+              </Button>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-sm text-slate-400">Token B</Label>
+            <div className="flex gap-2">
+              <Input
+                type="number"
+                placeholder="0.00"
+                value={amountB}
+                onChange={(e) => setAmountB(e.target.value)}
+                className="flex-1 bg-slate-800 border-slate-600"
+              />
+              <Button variant="outline" onClick={() => setShowTokenBSelector(true)} className="min-w-[120px]">
+                {tokenB ? (
+                  <div className="flex items-center gap-2">
+                    {tokenB.logoURI && <img src={tokenB.logoURI} alt={tokenB.symbol} className="w-5 h-5 rounded-full" />}
+                    <span>{tokenB.symbol}</span>
+                  </div>
+                ) : (
+                  <span>Select Token</span>
+                )}
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Fee Tier Selection */}
+      <Card className="bg-slate-900 border-slate-700">
+        <CardContent className="p-6 space-y-3">
+          <Label className="text-sm text-slate-400">Fee Tier</Label>
+          <div className="flex gap-2 flex-wrap">
+            {feeOptions.map((option) => (
+              <Button
+                key={option.value}
+                variant={selectedFee === option.value ? "default" : "outline"}
+                onClick={() => setSelectedFee(option.value)}
+                className="flex-1 min-w-[80px]"
+              >
+                {option.label}
+              </Button>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Price Range */}
+      <Card className="bg-slate-900 border-slate-700">
+        <CardContent className="p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <Label className="text-sm text-slate-400">Price Range</Label>
+            {poolExists && currentPrice && (
+              <span className="text-xs text-slate-400">
+                Current: {currentPrice.toFixed(6)}
+              </span>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label className="text-xs text-slate-500">Min Price</Label>
+              <div className="relative">
+                <Input
+                  type="number"
+                  placeholder="0.00"
+                  value={minPrice}
+                  onChange={(e) => setMinPrice(e.target.value)}
+                  className="bg-slate-800 border-slate-600"
+                />
+                <TrendingDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-xs text-slate-500">Max Price</Label>
+              <div className="relative">
+                <Input
+                  type="number"
+                  placeholder="0.00"
+                  value={maxPrice}
+                  onChange={(e) => setMaxPrice(e.target.value)}
+                  className="bg-slate-800 border-slate-600"
+                />
+                <TrendingUp className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+              </div>
+            </div>
+          </div>
+
+          {/* Range Status */}
+          {isInRange !== null && poolExists && (
+            <div className={`p-3 rounded-lg border ${
+              isInRange 
+                ? 'bg-green-500/10 border-green-500/20 text-green-400' 
+                : 'bg-orange-500/10 border-orange-500/20 text-orange-400'
+            }`}>
+              <div className="flex items-center gap-2 text-sm font-medium">
+                {isInRange ? (
+                  <>
+                    <Zap className="h-4 w-4" />
+                    <span>Position is IN RANGE - Will earn fees</span>
+                  </>
+                ) : (
+                  <>
+                    <AlertTriangle className="h-4 w-4" />
+                    <span>Position is OUT OF RANGE - Won't earn fees until price returns</span>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Add Liquidity Button */}
+      {isConnected ? (
+        <Button
+          onClick={handleAddLiquidity}
+          disabled={!tokenA || !tokenB || !amountA || !amountB || !minPrice || !maxPrice || isAdding}
+          className="w-full h-12 text-base font-semibold"
+        >
+          {isAdding ? "Adding Liquidity..." : "Add V3 Liquidity (Advanced Mode)"}
+        </Button>
+      ) : (
+        <Button disabled className="w-full h-12">
+          Connect Wallet
+        </Button>
+      )}
+
+      {/* Token Selectors */}
+      <TokenSelector
+        open={showTokenASelector}
+        onClose={() => setShowTokenASelector(false)}
+        onSelect={(token) => {
+          setTokenA(token);
+          setShowTokenASelector(false);
+        }}
+        selectedToken={tokenA}
+        otherToken={tokenB}
+      />
+
+      <TokenSelector
+        open={showTokenBSelector}
+        onClose={() => setShowTokenBSelector(false)}
+        onSelect={(token) => {
+          setTokenB(token);
+          setShowTokenBSelector(false);
+        }}
+        selectedToken={tokenB}
+        otherToken={tokenA}
+      />
+    </div>
+  );
+}
