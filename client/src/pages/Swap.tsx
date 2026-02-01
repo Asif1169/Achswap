@@ -573,22 +573,48 @@ export default function Swap() {
           await approveTx.wait();
         }
         
-        // Execute V3 swap
-        const fee = bestQuote.route[0].fee || 3000; // Default to 0.3% if not set
-        
-        const params = {
-          tokenIn: fromToken.address,
-          tokenOut: toToken.address,
-          fee: fee,
-          recipient: recipient,
-          amountIn: amountIn,
-          amountOutMinimum: minAmountOut,
-          sqrtPriceLimitX96: 0,
-        };
-        
-        const gasEstimate = await swapRouter.exactInputSingle.estimateGas(params);
-        const gasLimit = (gasEstimate * 150n) / 100n;
-        tx = await swapRouter.exactInputSingle(params, { gasLimit });
+        // Check if single-hop or multi-hop
+        if (bestQuote.route.length === 1) {
+          // Single-hop V3 swap
+          const fee = bestQuote.route[0].fee || 3000;
+          
+          const params = {
+            tokenIn: fromToken.address,
+            tokenOut: toToken.address,
+            fee: fee,
+            recipient: recipient,
+            amountIn: amountIn,
+            amountOutMinimum: minAmountOut,
+            sqrtPriceLimitX96: 0,
+          };
+          
+          const gasEstimate = await swapRouter.exactInputSingle.estimateGas(params);
+          const gasLimit = (gasEstimate * 150n) / 100n;
+          tx = await swapRouter.exactInputSingle(params, { gasLimit });
+        } else {
+          // Multi-hop V3 swap
+          const { encodePath } = await import("@/lib/v3-utils");
+          const tokens = [fromToken.address];
+          const fees = [];
+          
+          for (const hop of bestQuote.route) {
+            tokens.push(hop.tokenOut.address);
+            fees.push(hop.fee || 3000);
+          }
+          
+          const path = encodePath(tokens, fees);
+          
+          const params = {
+            path: path,
+            recipient: recipient,
+            amountIn: amountIn,
+            amountOutMinimum: minAmountOut,
+          };
+          
+          const gasEstimate = await swapRouter.exactInput.estimateGas(params);
+          const gasLimit = (gasEstimate * 150n) / 100n;
+          tx = await swapRouter.exactInput(params, { gasLimit });
+        }
       } else {
         // V2 Swap
         const V2_ROUTER_ABI = [
