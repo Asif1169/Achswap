@@ -68,10 +68,10 @@ export function V3ContractStatus() {
 
   if (status.checking) {
     return (
-      <Card className="bg-slate-800/50 border-slate-700 mb-4">
-        <CardContent className="p-4">
-          <p className="text-sm text-slate-400 flex items-center gap-2">
-            <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full"></div>
+      <Card className="bg-slate-800/50 border-slate-700 mb-3 sm:mb-4">
+        <CardContent className="p-3 sm:p-4">
+          <p className="text-xs sm:text-sm text-slate-400 flex items-center gap-2">
+            <div className="animate-spin h-3 w-3 sm:h-4 sm:w-4 border-2 border-blue-500 border-t-transparent rounded-full"></div>
             Checking V3 contracts...
           </p>
         </CardContent>
@@ -81,42 +81,36 @@ export function V3ContractStatus() {
 
   if (!status.exists) {
     return (
-      <Card className="bg-red-500/10 border-red-500/30 mb-4">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-semibold flex items-center gap-2 text-red-400">
-            <XCircle className="h-5 w-5" />
-            V3 Contracts Not Found on ARC Testnet
+      <Card className="bg-red-500/10 border-red-500/30 mb-3 sm:mb-4">
+        <CardHeader className="pb-2 sm:pb-3 p-3 sm:p-6">
+          <CardTitle className="text-xs sm:text-sm font-semibold flex items-center gap-2 text-red-400">
+            <XCircle className="h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
+            <span className="line-clamp-2">V3 Contracts Not Found on ARC Testnet</span>
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="text-xs text-red-300 space-y-2">
+        <CardContent className="space-y-2 sm:space-y-3 p-3 sm:p-6 pt-0">
+          <div className="text-[10px] sm:text-xs text-red-300 space-y-1 sm:space-y-2">
             <p className="font-medium">Missing contracts:</p>
-            <ul className="list-disc list-inside space-y-1 text-red-200/80">
-              {status.missing.map((contract, index) => (
-                <li key={index} className="break-all">{contract}</li>
+            <ul className="list-disc list-inside space-y-0.5 sm:space-y-1 text-red-200/80 text-[9px] sm:text-xs">
+              {status.missing.slice(0, 3).map((contract, index) => (
+                <li key={index} className="break-all line-clamp-2">{contract}</li>
               ))}
+              {status.missing.length > 3 && (
+                <li className="text-red-300/60">... and {status.missing.length - 3} more</li>
+              )}
             </ul>
           </div>
           
-          <div className="p-3 bg-yellow-500/10 border border-yellow-500/30 rounded text-xs text-yellow-300">
-            <p className="font-semibold mb-1">⚠️ V3 Features Disabled</p>
-            <p>V3 swap, liquidity, and migration will not work until contracts are deployed.</p>
-          </div>
-
-          <div className="p-3 bg-blue-500/10 border border-blue-500/30 rounded text-xs text-blue-300">
-            <p className="font-semibold mb-1">💡 Solutions:</p>
-            <ul className="list-disc list-inside space-y-1 ml-2">
-              <li>Deploy Uniswap V3 contracts to ARC Testnet</li>
-              <li>Provide correct V3 contract addresses</li>
-              <li>Use V2 features (working correctly)</li>
-            </ul>
+          <div className="p-2 sm:p-3 bg-yellow-500/10 border border-yellow-500/30 rounded text-[10px] sm:text-xs text-yellow-300">
+            <p className="font-semibold mb-0.5 sm:mb-1">⚠️ V3 Features Disabled</p>
+            <p className="leading-tight">V3 will not work until contracts are deployed.</p>
           </div>
 
           <Button
             onClick={checkContracts}
             variant="outline"
             size="sm"
-            className="w-full border-red-500/30 text-red-400 hover:bg-red-500/10"
+            className="w-full border-red-500/30 text-red-400 hover:bg-red-500/10 h-8 sm:h-9 text-xs"
           >
             Re-check Contracts
           </Button>
@@ -126,11 +120,11 @@ export function V3ContractStatus() {
   }
 
   return (
-    <Card className="bg-green-500/10 border-green-500/30 mb-4">
-      <CardContent className="p-4">
-        <p className="text-sm text-green-400 flex items-center gap-2">
-          <CheckCircle className="h-5 w-5" />
-          All V3 contracts verified on ARC Testnet
+    <Card className="bg-green-500/10 border-green-500/30 mb-3 sm:mb-4">
+      <CardContent className="p-3 sm:p-4">
+        <p className="text-xs sm:text-sm text-green-400 flex items-center gap-2">
+          <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
+          <span className="line-clamp-1">All V3 contracts verified on ARC Testnet</span>
         </p>
       </CardContent>
     </Card>
