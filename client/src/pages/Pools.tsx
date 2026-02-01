@@ -180,7 +180,7 @@ export default function Pools() {
           <CardTitle>All Pools</CardTitle>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
+          {(isLoadingV2 || isLoadingV3) ? (
             <div className="space-y-3">
               {[1, 2, 3, 4, 5].map((i) => (
                 <Skeleton key={i} className="h-20 w-full" />
