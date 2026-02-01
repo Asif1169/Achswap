@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { V3ContractStatus } from "@/components/V3ContractStatus";
 import { AddLiquidityV2 } from "@/components/AddLiquidityV2";
 import { AddLiquidityV3Basic } from "@/components/AddLiquidityV3Basic";
 import { AddLiquidityV3Advanced } from "@/components/AddLiquidityV3Advanced";
