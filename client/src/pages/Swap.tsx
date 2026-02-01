@@ -2,10 +2,11 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowDownUp, Settings, AlertTriangle, ExternalLink, HelpCircle, ChevronDown, Bell, ArrowRight } from "lucide-react";
+import { ArrowDownUp, Settings, AlertTriangle, ExternalLink, HelpCircle, ChevronDown, Bell, ArrowRight, Zap } from "lucide-react";
 import { TokenSelector } from "@/components/TokenSelector";
 import { SwapSettings } from "@/components/SwapSettings";
 import { TransactionHistory } from "@/components/TransactionHistory";
+import { PathVisualizer, type RouteHop } from "@/components/PathVisualizer";
 import { useAccount, useBalance, useChainId } from "wagmi";
 import { useToast } from "@/hooks/use-toast";
 import type { Token } from "@shared/schema";
@@ -14,6 +15,9 @@ import { Contract, BrowserProvider, formatUnits, parseUnits } from "ethers";
 import { defaultTokens, getTokensByChainId } from "@/data/tokens";
 import { formatAmount, parseAmount } from "@/lib/decimal-utils";
 import { getContractsForChain } from "@/lib/contracts";
+import { getSmartRouteQuote, type SmartRoutingResult } from "@/lib/smart-routing";
+import { loadDexSettings, saveDexSettings } from "@/lib/dex-settings";
+import { SWAP_ROUTER_V3_ABI } from "@/lib/abis/v3";
 
 // ERC20 ABI for token operations
 const ERC20_ABI = [
