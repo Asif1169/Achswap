@@ -187,6 +187,40 @@ export function MigrateV2ToV3() {
       // Calculate liquidity to migrate
       const liquidityToMigrate = (selectedPosition.lpBalance * BigInt(percentToMigrate)) / 100n;
 
+      // Calculate expected amounts (with 2% slippage)
+      const amount0 = (selectedPosition.reserve0 * liquidityToMigrate) / selectedPosition.lpBalance;
+      const amount1 = (selectedPosition.reserve1 * liquidityToMigrate) / selectedPosition.lpBalance;
+      const amount0Min = (amount0 * 98n) / 100n;
+      const amount1Min = (amount1 * 98n) / 100n;
+
+      // CRITICAL: Create V3 pool first if it doesn't exist
+      // Calculate price from V2 reserves
+      const { priceToSqrtPriceX96, getPriceFromAmounts } = await import("@/lib/v3-utils");
+      const price = getPriceFromAmounts(
+        selectedPosition.reserve0, 
+        selectedPosition.reserve1, 
+        selectedPosition.token0.decimals, 
+        selectedPosition.token1.decimals
+      );
+      const sqrtPriceX96 = priceToSqrtPriceX96(price, selectedPosition.token0.decimals, selectedPosition.token1.decimals);
+
+      toast({
+        title: "Ensuring V3 pool exists...",
+        description: "Creating or verifying V3 pool for migration",
+      });
+
+      try {
+        const createTx = await migrator.createAndInitializePoolIfNecessary(
+          selectedPosition.token0.address,
+          selectedPosition.token1.address,
+          selectedFee,
+          sqrtPriceX96
+        );
+        await createTx.wait();
+      } catch (poolError: any) {
+        console.log("Pool creation note:", poolError.message);
+      }
+
       // Approve LP tokens
       toast({
         title: "Approving LP tokens...",
@@ -198,12 +232,6 @@ export function MigrateV2ToV3() {
         const approveTx = await pairContract.approve(contracts.v3.migrator, liquidityToMigrate);
         await approveTx.wait();
       }
-
-      // Calculate expected amounts (with 2% slippage)
-      const amount0 = (selectedPosition.reserve0 * liquidityToMigrate) / selectedPosition.lpBalance;
-      const amount1 = (selectedPosition.reserve1 * liquidityToMigrate) / selectedPosition.lpBalance;
-      const amount0Min = (amount0 * 98n) / 100n;
-      const amount1Min = (amount1 * 98n) / 100n;
 
       // Use full range for safety
       const { getFullRangeTicks } = await import("@/lib/v3-utils");
