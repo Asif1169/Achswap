@@ -166,18 +166,45 @@ export default function Swap() {
           return;
         }
 
-        // Get smart route quote
-        const result = await getSmartRouteQuote(
-          provider,
-          contracts.v2.router,
-          contracts.v3.quoter02,
-          fromToken,
-          toToken,
-          amountIn,
-          wrappedAddress,
+        // Check cache first
+        const cachedQuote = getCachedQuote(
+          fromToken.address,
+          toToken.address,
+          fromAmount,
           v2Enabled,
           v3Enabled
         );
+
+        let result: SmartRoutingResult | null;
+
+        if (cachedQuote) {
+          result = cachedQuote;
+        } else {
+          // Get smart route quote
+          result = await getSmartRouteQuote(
+            provider,
+            contracts.v2.router,
+            contracts.v3.quoter02,
+            fromToken,
+            toToken,
+            amountIn,
+            wrappedAddress,
+            v2Enabled,
+            v3Enabled
+          );
+
+          // Cache the result
+          if (result) {
+            setCachedQuote(
+              fromToken.address,
+              toToken.address,
+              fromAmount,
+              v2Enabled,
+              v3Enabled,
+              result
+            );
+          }
+        }
 
         if (!result || !result.bestQuote) {
           setToAmount("");
