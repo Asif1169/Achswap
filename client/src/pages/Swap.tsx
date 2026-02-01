@@ -256,10 +256,8 @@ export default function Swap() {
         return exists;
       }
 
-      // Use public RPC for token data (no wallet needed) - use chain-specific RPC
-      const rpcUrl = chainId === 2201 
-        ? 'https://rpc.testnet.stable.xyz/' 
-        : 'https://rpc.testnet.arc.network';
+      // Use public RPC for token data (no wallet needed) - ARC Testnet
+      const rpcUrl = 'https://rpc.testnet.arc.network';
       const provider = new BrowserProvider({
         request: async ({ method, params }: any) => {
           const response = await fetch(rpcUrl, {
