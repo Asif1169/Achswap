@@ -56,10 +56,28 @@ export default function Swap() {
   const [routingPath, setRoutingPath] = useState<string[]>([]);
   const [showTransactionHistory, setShowTransactionHistory] = useState(false);
   const [isPriceImpactCollapsed, setIsPriceImpactCollapsed] = useState(false);
+  
+  // Smart routing state
+  const [smartRoutingResult, setSmartRoutingResult] = useState<SmartRoutingResult | null>(null);
+  const [routeHops, setRouteHops] = useState<RouteHop[]>([]);
+  const [v2Enabled, setV2Enabled] = useState(true);
+  const [v3Enabled, setV3Enabled] = useState(true);
 
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
   const { toast } = useToast();
+  
+  // Load DEX settings on mount
+  useEffect(() => {
+    const settings = loadDexSettings();
+    setV2Enabled(settings.v2Enabled);
+    setV3Enabled(settings.v3Enabled);
+  }, []);
+  
+  // Save DEX settings when they change
+  useEffect(() => {
+    saveDexSettings({ v2Enabled, v3Enabled });
+  }, [v2Enabled, v3Enabled]);
 
   // Get chain-specific contracts
   const contracts = chainId ? getContractsForChain(chainId) : null;
