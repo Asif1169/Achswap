@@ -140,7 +140,7 @@ export default function Pools() {
                   <p className="text-xs sm:text-sm text-muted-foreground">
                     Total TVL (USD)
                   </p>
-                  <p className="text-xl sm:text-2xl font-bold">{formatNumber(totalTVL)}</p>
+                  <p className="text-xl sm:text-2xl font-bold">{formatNumber(v2TotalTVL + v3TotalTVL)}</p>
                 </div>
                 <TrendingUp className="h-6 w-6 sm:h-8 sm:w-8 text-green-500" />
               </div>
