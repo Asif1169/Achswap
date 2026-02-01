@@ -109,13 +109,13 @@ export default function Pools() {
             </p>
           </div>
           <Button
-            onClick={loadPools}
-            disabled={isLoading}
+            onClick={loadAllPools}
+            disabled={isLoadingV2 || isLoadingV3}
             variant="outline"
             size="icon"
             className="h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0"
           >
-            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-4 w-4 ${(isLoadingV2 || isLoadingV3) ? 'animate-spin' : ''}`} />
           </Button>
         </div>
 
