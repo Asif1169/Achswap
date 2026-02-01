@@ -28,7 +28,7 @@ const PAIR_ABI = [
   "function totalSupply() view returns (uint256)",
 ];
 
-export default function RemoveLiquidity() {
+export function RemoveLiquidityV2() {
   const [percentage, setPercentage] = useState([25]);
   const [isRemoving, setIsRemoving] = useState(false);
   const [tokenA, setTokenA] = useState<Token | null>(null);
