@@ -17,12 +17,31 @@ export function V3ContractStatus() {
   }>({ checking: true, exists: false, missing: [], details: {} });
 
   const checkContracts = async () => {
-    if (!chainId || !window.ethereum) return;
+    if (!chainId) return;
 
     setStatus(prev => ({ ...prev, checking: true }));
 
     try {
-      const provider = new BrowserProvider(window.ethereum);
+      // Create provider from public RPC
+      const rpcUrl = 'https://rpc.testnet.arc.network';
+      const provider = new BrowserProvider({
+        request: async ({ method, params }: any) => {
+          const response = await fetch(rpcUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              jsonrpc: '2.0',
+              id: 1,
+              method,
+              params: params || [],
+            }),
+          });
+          const data = await response.json();
+          if (data.error) throw new Error(data.error.message);
+          return data.result;
+        },
+      });
+
       const contracts = getContractsForChain(chainId);
 
       const result = await verifyV3Contracts(provider, contracts.v3);
