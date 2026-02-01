@@ -226,7 +226,7 @@ export async function getSmartRouteQuote(
   try {
     const quotes = await Promise.allSettled([
       v2Enabled ? getV2Quote(provider, v2RouterAddress, fromToken, toToken, amountIn, wrappedTokenAddress) : Promise.resolve(null),
-      v3Enabled ? getV3Quote(provider, v3QuoterAddress, fromToken, toToken, amountIn) : Promise.resolve(null),
+      v3Enabled ? getV3Quote(provider, v3QuoterAddress, fromToken, toToken, amountIn, wrappedTokenAddress) : Promise.resolve(null),
     ]);
     
     const v2Quote = quotes[0].status === "fulfilled" ? quotes[0].value : null;
