@@ -85,8 +85,6 @@ export default function Pools() {
       pool.token1.name.toLowerCase().includes(query)
     );
   });
-    );
-  });
 
   const formatNumber = (num: number) => {
     if (num >= 1000000) {
