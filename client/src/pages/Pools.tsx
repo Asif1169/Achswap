@@ -194,7 +194,7 @@ export default function Pools() {
             </div>
           ) : (
             <div className="space-y-2">
-              {filteredPools.map((pool) => {
+              {filteredV2Pools.map((pool) => {
                 // Try to find token by symbol first, then by display symbol
                 const token0Data = tokens.find(t => 
                   t.symbol === pool.token0.symbol || 
