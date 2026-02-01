@@ -443,6 +443,7 @@ export function AddLiquidityV3Advanced() {
           setTokenA(token);
           setShowTokenASelector(false);
         }}
+        tokens={tokens}
         selectedToken={tokenA}
         otherToken={tokenB}
       />
@@ -454,6 +455,7 @@ export function AddLiquidityV3Advanced() {
           setTokenB(token);
           setShowTokenBSelector(false);
         }}
+        tokens={tokens}
         selectedToken={tokenB}
         otherToken={tokenA}
       />
