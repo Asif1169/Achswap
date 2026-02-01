@@ -100,7 +100,7 @@ export function AddLiquidityV2() {
         const tokenAAddress = isTokenANative ? wrappedAddress : tokenA.address;
         const tokenBAddress = isTokenBNative ? wrappedAddress : tokenB.address;
 
-        console.log('Checking pair:', { tokenAAddress, tokenBAddress, isTokenANative, isTokenBNative, factoryAddress: contracts.factory });
+        console.log('Checking pair:', { tokenAAddress, tokenBAddress, isTokenANative, isTokenBNative, factoryAddress: contracts.v2.factory });
 
         const pairAddress = await factory.getPair(tokenAAddress, tokenBAddress);
         console.log('Pair lookup result:', pairAddress);
