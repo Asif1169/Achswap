@@ -20,7 +20,7 @@ const ERC20_ABI = [
   "function allowance(address owner, address spender) view returns (uint256)",
 ];
 
-export default function AddLiquidity() {
+export function AddLiquidityV2() {
   const [tokenA, setTokenA] = useState<Token | null>(null);
   const [tokenB, setTokenB] = useState<Token | null>(null);
   const [amountA, setAmountA] = useState("");
