@@ -100,16 +100,13 @@ export default function Swap() {
 
     // Set defaults only if not already set or if chain changed
     if (!fromToken || fromToken.chainId !== chainId) {
-      // For Stable Testnet (2201): default to gUSDT
-      // For ARC Testnet (5042002): default to USDC
-      const defaultFrom = chainId === 2201 
-        ? tokens.find(t => t.symbol === 'gUSDT')
-        : tokens.find(t => t.symbol === 'USDC');
+      // Default to USDC for ARC Testnet
+      const defaultFrom = tokens.find(t => t.symbol === 'USDC');
       if (defaultFrom) setFromToken(defaultFrom);
     }
 
     if (!toToken || toToken.chainId !== chainId) {
-      // Both chains: default to ACHS
+      // Default to ACHS
       const achs = tokens.find(t => t.symbol === 'ACHS');
       if (achs) setToToken(achs);
     }
