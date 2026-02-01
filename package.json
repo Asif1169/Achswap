@@ -7,9 +7,9 @@
     "node": ">=18.0.0"
   },
   "scripts": {
-    "dev": "vite dev --host 0.0.0.0 --port 5000",
+    "dev": "vite dev --host 0.0.0.0 --port 3000",
     "build": "vite build",
-    "start": "vite preview --port 5000 --host 0.0.0.0",
+    "start": "vite preview --port 3000 --host 0.0.0.0",
     "check": "tsc"
   },
   "dependencies": {
