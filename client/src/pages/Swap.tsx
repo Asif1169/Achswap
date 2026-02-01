@@ -1053,6 +1053,10 @@ export default function Swap() {
         onRecipientAddressChange={setRecipientAddress}
         quoteRefreshInterval={quoteRefreshInterval}
         onQuoteRefreshIntervalChange={setQuoteRefreshInterval}
+        v2Enabled={v2Enabled}
+        v3Enabled={v3Enabled}
+        onV2EnabledChange={setV2Enabled}
+        onV3EnabledChange={setV3Enabled}
       />
 
       <TransactionHistory
