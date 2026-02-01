@@ -823,16 +823,16 @@ export default function Swap() {
     console.error('Error formatting toBalance', error);
   }
 
-  // Get native and wrapped tokens based on current chain
-  const nativeSymbol = chainId === 2201 ? 'gUSDT' : 'USDC';
-  const wrappedSymbol = chainId === 2201 ? 'wUSDT' : 'wUSDC';
+  // Get native and wrapped tokens for ARC Testnet
+  const nativeSymbol = 'USDC';
+  const wrappedSymbol = 'wUSDC';
   const nativeToken = tokens.find(t => t.symbol === nativeSymbol);
   const wrappedToken = tokens.find(t => t.symbol === wrappedSymbol);
 
   // Define ROUTER_ADDRESS based on chainId
   let ROUTER_ADDRESS = "";
   if (contracts) {
-    ROUTER_ADDRESS = contracts.router;
+    ROUTER_ADDRESS = contracts.v2.router;
   }
 
   return (
