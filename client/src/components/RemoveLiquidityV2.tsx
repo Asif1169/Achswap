@@ -220,7 +220,7 @@ export function RemoveLiquidityV2() {
         "function getPair(address tokenA, address tokenB) view returns (address pair)"
       ];
 
-      const factory = new Contract(contracts.factory, FACTORY_ABI, provider);
+      const factory = new Contract(contracts.v2.factory, FACTORY_ABI, provider);
       
       // Get wrapped token for native conversion (chain-specific)
       const wrappedSymbol = chainId === 2201 ? 'wUSDT' : 'wUSDC';
@@ -240,7 +240,7 @@ export function RemoveLiquidityV2() {
       const tokenAAddress = isTokenANative ? wusdcAddress : tokenA.address;
       const tokenBAddress = isTokenBNative ? wusdcAddress : tokenB.address;
 
-      console.log('Looking up pair:', { tokenAAddress, tokenBAddress, isTokenANative, isTokenBNative, factoryAddress: contracts.factory });
+      console.log('Looking up pair:', { tokenAAddress, tokenBAddress, isTokenANative, isTokenBNative, factoryAddress: contracts.v2.factory });
       const pair = await factory.getPair(tokenAAddress, tokenBAddress);
       console.log('Pair found:', pair);
 
@@ -290,19 +290,19 @@ export function RemoveLiquidityV2() {
         "function removeLiquidityETH(address token, uint liquidity, uint amountTokenMin, uint amountETHMin, address to, uint deadline) external returns (uint amountToken, uint amountETH)"
       ];
 
-      const router = new Contract(contracts.router, ROUTER_ABI, signer);
+      const router = new Contract(contracts.v2.router, ROUTER_ABI, signer);
       const pairContract = new Contract(pairAddress, ERC20_ABI, signer);
 
       // Calculate liquidity to remove based on percentage (use raw balance value)
       const liquidityToRemove = lpBalanceRaw * BigInt(percentage[0]) / 100n;
 
       // Approve router to spend LP tokens
-      const allowance = await pairContract.allowance(address, contracts.router);
+      const allowance = await pairContract.allowance(address, contracts.v2.router);
       if (allowance < liquidityToRemove) {
         console.log('Approving router to spend LP tokens:', { liquidityToRemove: liquidityToRemove.toString(), allowance: allowance.toString() });
-        const approveGasEstimate = await pairContract.approve.estimateGas(contracts.router, liquidityToRemove);
+        const approveGasEstimate = await pairContract.approve.estimateGas(contracts.v2.router, liquidityToRemove);
         const approveGasLimit = (approveGasEstimate * 150n) / 100n;
-        const approveTx = await pairContract.approve(contracts.router, liquidityToRemove, { gasLimit: approveGasLimit });
+        const approveTx = await pairContract.approve(contracts.v2.router, liquidityToRemove, { gasLimit: approveGasLimit });
         await approveTx.wait();
       }
 
