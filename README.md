@@ -70,6 +70,104 @@ Launches the production-ready application
 
 
 
+## Deploying AchSwap V2 Contracts (Remix)
+
+This covers deploying the core AchSwap V2 contracts to ARC Testnet using Remix IDE. All contracts live in the `contracts/` folder of the repo.
+
+---
+
+### Step 1 — Set Up Remix
+
+1. Open [https://remix.ethereum.org](https://remix.ethereum.org)
+2. In the File Explorer, create a new workspace or upload the contents of the `contracts/` folder
+3. Connect MetaMask to **ARC Testnet** (Chain ID: `5042002`, RPC: `https://rpc.testnet.arc.network`)
+4. In the **Deploy & Run** tab, set Environment to **Injected Provider - MetaMask**
+
+---
+
+### Step 2 — Compile Settings
+
+Set the compiler to match the pragma in the contracts (typically `0.6.x`). Enable optimizations:
+
+- **Optimizer**: Yes  
+- **Runs**: `2000`
+
+> ARC has a **24KB contract size limit**. If any contract hits the limit during compilation, increase optimizer runs or split the contract. AchSwap V2 is already structured to stay under this limit.
+
+---
+
+### Step 3 — Deploy Order
+
+Deploy contracts **in this exact order** — each depends on the previous.
+
+#### 1. Deploy `AchSwapV2Factory`
+
+- No constructor arguments needed
+- Copy the deployed **Factory address** — you'll need it for the next steps
+
+#### 2. Get the Init Code Pair Hash
+
+After deploying the Factory, you need the `INIT_CODE_PAIR_HASH`. This is a `bytes32` value hardcoded in the Router and Library contracts used to deterministically compute pair addresses.
+
+In Remix, after deploying the Factory:
+
+1. Call the `INIT_CODE_PAIR_HASH()` getter on the deployed Factory contract
+2. Copy the returned `bytes32` value (looks like `0x...` 64 hex chars)
+
+#### 3. Update the Hash in `AchSwapV2Library.sol`
+
+Open `contracts/AchSwapV2Library.sol` and find this line:
+
+```solidity
+hex'REPLACE_WITH_YOUR_INIT_CODE_HASH' // init code hash
+```
+
+Replace `REPLACE_WITH_YOUR_INIT_CODE_HASH` with the actual hash from step 2 (without the `0x` prefix):
+
+```solidity
+hex'a1b2c3d4...your64charhash...e5f6' // init code hash
+```
+
+Recompile after saving.
+
+#### 4. Deploy `AchSwapV2Router`
+
+Constructor arguments:
+- `_factory`: paste the Factory address from Step 3.1
+- `_WETH` (or `_wUSDC`): `0xDe5DB9049a8dd344dC1B7Bbb098f9da60930A6dA`
+
+Copy the deployed **Router address**.
+
+---
+
+### Step 4 — Update the Frontend
+
+Once both contracts are live, update `client/src/lib/contracts.ts` with your new addresses:
+
+```ts
+contractsByChainId: {
+  5042002: {
+    factory: '0xYOUR_NEW_FACTORY_ADDRESS',
+    router:  '0xYOUR_NEW_ROUTER_ADDRESS',
+  }
+}
+```
+
+Also update `client/src/data/tokens.ts` if you're adding new default tokens.
+
+---
+
+### Common Issues
+
+| Problem | Fix |
+|---------|-----|
+| Contract exceeds 24KB | Increase optimizer runs or check for unused imports |
+| Pair address mismatch / swap fails | Init code hash in Library doesn't match Factory — redo Step 3.2 |
+| `INSUFFICIENT_OUTPUT_AMOUNT` immediately after deploy | No liquidity yet — add liquidity first via the UI before testing swaps |
+| MetaMask won't connect to ARC | Add network manually: Chain ID `5042002`, RPC `https://rpc.testnet.arc.network`, symbol `USDC` |
+
+---
+
 ## Overview
 Achswap is a multi-chain decentralized exchange (DEX) frontend application built with React, Vite, and Web3 technologies. It allows users to:
 - Swap tokens on ARC Testnet
@@ -103,6 +201,8 @@ Achswap is a multi-chain decentralized exchange (DEX) frontend application built
 - Wrapped Token: wUSDC (18 decimals)
 - Factory: `0x7cC023C7184810B84657D55c1943eBfF8603B72B`
 - Router: `0xB92428D440c335546b69138F7fAF689F5ba8D436`
+- wUsdc:
+‘0xDe5DB9049a8dd344dC1B7Bbb098f9da60930A6dA'
 - Explorer: https://testnet.arcscan.app
 - RPC: https://rpc.testnet.arc.network
 - Default Token Pair: USDC + ACHS
